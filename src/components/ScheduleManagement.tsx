@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
+import ShiftModal from './ShiftModal';
 
 interface Employee {
   id: string;
@@ -6,8 +8,21 @@ interface Employee {
   position: string;
 }
 
+interface Shift {
+  id: string;
+  date: string;
+  position: string;
+  start: string;
+  end: string;
+  assignedEmployees: string[];
+}
+
 const ScheduleManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
 
   const mockEmployees: Employee[] = [
     { id: '1', name: 'John Doe', position: 'Front Desk' },
@@ -17,15 +32,60 @@ const ScheduleManagement: React.FC = () => {
     { id: '5', name: 'David Brown', position: 'Cleaner' },
   ];
 
-  const weekDays = [
-    'SUN, MAR 16',
-    'MON, MAR 17',
-    'TUE, MAR 18',
-    'WED, MAR 19',
-    'THU, MAR 20',
-    'FRI, MAR 21',
-    'SAT, MAR 22',
-  ];
+  const getWeekDays = () => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }).map((_, i) => addDays(start, i));
+  };
+
+  const openModal = (shift?: Shift) => {
+    setEditingShift(shift || null);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setEditingShift(null);
+    setShowModal(false);
+  };
+
+  const saveShift = (newShift: Shift) => {
+    setShifts(prev => {
+      const exists = prev.find(shift => shift.id === newShift.id);
+      if (exists) {
+        return prev.map(shift => (shift.id === newShift.id ? newShift : shift));
+      }
+      return [...prev, newShift];
+    });
+    closeModal();
+  };
+
+  const removeShift = (shiftToRemove: Shift) => {
+    setShifts(prev => prev.filter(shift => shift.id !== shiftToRemove.id));
+  };
+
+  const renderShifts = (dayShifts: Shift[]) => {
+    if (dayShifts.length === 0) {
+      return <p className="text-gray-400 text-sm">No shifts</p>;
+    }
+
+    return dayShifts.map((shift, i) => (
+      <div key={i} className="mb-2 text-white text-sm border-b border-gray-600 pb-1">
+        <div className="flex justify-between items-center">
+          <div>
+            <strong>{shift.position}</strong> ({shift.start} - {shift.end})<br />
+            <span className="text-gray-400 text-xs">
+              {shift.assignedEmployees
+                .map(id => mockEmployees.find(e => e.id === id)?.name)
+                .join(', ')}
+            </span>
+          </div>
+          <div className="flex space-x-2 text-xs">
+            <button onClick={() => openModal(shift)} className="text-blue-400">Edit</button>
+            <button onClick={() => removeShift(shift)} className="text-red-400">Remove</button>
+          </div>
+        </div>
+      </div>
+    ));
+  };
 
   return (
     <div className="p-6">
@@ -34,7 +94,10 @@ const ScheduleManagement: React.FC = () => {
           <h1 className="text-2xl font-bold text-white">Schedule Management</h1>
           <p className="text-gray-400">Create and manage employee shifts</p>
         </div>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        <button
+          onClick={() => openModal()}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
           Create New Shift
         </button>
       </div>
@@ -66,87 +129,57 @@ const ScheduleManagement: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-4 mb-6">
-          {weekDays.map((day, index) => (
-            <div key={index} className="text-center">
-              <p className="text-white font-medium">{day.split(',')[0]}</p>
-              <p className="text-gray-400 text-sm">{day.split(',')[1]}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-4">
-          {weekDays.map((day, index) => (
-            <div key={index} className="text-center p-4 bg-[#252b3b] rounded">
-              <p className="text-gray-400">No shifts</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8">
-          <h3 className="text-white font-medium mb-4">Create New Shift</h3>
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-gray-400 mb-2">Date</label>
-              <input
-                type="date"
-                className="w-full bg-[#252b3b] text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-400 mb-2">Shift Position</label>
-              <input
-                type="text"
-                className="w-full bg-[#252b3b] text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-                placeholder="Enter position"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-400 mb-2">Start Time</label>
-              <input
-                type="time"
-                className="w-full bg-[#252b3b] text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-400 mb-2">End Time</label>
-              <input
-                type="time"
-                className="w-full bg-[#252b3b] text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-white font-medium mb-4">Assign Employees</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {mockEmployees.map((employee) => (
-                <div
-                  key={employee.id}
-                  className="flex items-center space-x-3 p-3 bg-[#252b3b] rounded cursor-pointer hover:bg-[#2a2f3e]"
-                >
-                  <input
-                    type="checkbox"
-                    id={`employee-${employee.id}`}
-                    className="rounded bg-[#1e2433] border-gray-700 text-blue-500 focus:ring-blue-500"
-                  />
-                  <div>
-                    <label
-                      htmlFor={`employee-${employee.id}`}
-                      className="text-white cursor-pointer"
-                    >
-                      {employee.name}
-                    </label>
-                    <p className="text-gray-400 text-sm">{employee.position}</p>
-                  </div>
+        {viewMode === 'week' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+            {getWeekDays().map((day, index) => {
+              const dayShifts = shifts.filter(shift =>
+                isSameDay(new Date(shift.date), day)
+              );
+              return (
+                <div key={index} className="p-4 bg-[#252b3b] rounded text-left">
+                  <p className="text-white font-medium mb-2">
+                    {format(day, 'EEE, MMM d')}
+                  </p>
+                  {renderShifts(dayShifts)}
                 </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mb-6">
+            <select
+              value={selectedDate.toISOString()}
+              onChange={(e) => setSelectedDate(new Date(e.target.value))}
+              className="bg-[#252b3b] text-white p-2 rounded border border-gray-700"
+            >
+              {getWeekDays().map((day, index) => (
+                <option key={index} value={day.toISOString()}>
+                  {format(day, 'EEEE, MMM d')}
+                </option>
               ))}
+            </select>
+
+            <div className="mt-4 p-4 bg-[#252b3b] rounded text-left">
+              {renderShifts(
+                shifts.filter(shift =>
+                  isSameDay(new Date(shift.date), selectedDate)
+                )
+              )}
             </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {showModal && (
+        <ShiftModal
+          onClose={closeModal}
+          onSave={saveShift}
+          employees={mockEmployees}
+          initialShift={editingShift}
+        />
+      )}
     </div>
   );
 };
 
-export default ScheduleManagement; 
+export default ScheduleManagement;
