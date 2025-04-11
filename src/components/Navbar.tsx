@@ -1,33 +1,84 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
-const Navbar: React.FC = () => {
-  const location = useLocation();
-  
-  const isActive = (path: string) => {
-    return location.pathname === path ? 'text-blue-400' : 'text-white hover:text-gray-300';
+const Navbar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    onLogout();
+    navigate('/login');
   };
 
   return (
-    <nav className="bg-[#1a1f2e] text-white p-4 flex justify-between items-center">
-      <div className="flex items-center">
-        <Link to="/" className="text-xl font-bold">ShiftSync</Link>
-        <div className="ml-8 space-x-4">
-          <Link to="/" className={isActive('/')}>Home</Link>
-          <Link to="/dashboard" className={isActive('/dashboard')}>Dashboard</Link>
-          <Link to="/groups" className={isActive('/groups')}>Groups</Link>
-          <Link to="/schedule" className={isActive('/schedule')}>Schedule</Link>
+    <nav className="bg-[#0e1320] border-b border-gray-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link to="/dashboard" className="text-white text-2xl font-bold tracking-tight">
+            ShiftSync
+          </Link>
+
+          {/* Mobile hamburger menu */}
+          <div className="sm:hidden">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="text-gray-300 focus:outline-none"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {menuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
+
+          {/* Desktop menu */}
+          <div className="hidden sm:flex space-x-20 text-sm text-gray-300 items-center">
+            <Link to="/dashboard" className="hover:text-white">Dashboard</Link>
+            <Link to="/groups" className="hover:text-white">Groups</Link>
+            <Link to="/schedule" className="hover:text-white">Schedule</Link>
+            <button
+              onClick={handleLogout}
+              className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white"
+            >
+              Logout
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center">
-        <button className="p-2 rounded-full hover:bg-[#2a2f3e]">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-        </button>
+
+        {/* Mobile dropdown */}
+        {menuOpen && (
+          <div className="sm:hidden mt-2 space-y-2 text-sm text-gray-300">
+            <Link to="/dashboard" className="block hover:text-white">Dashboard</Link>
+            <Link to="/groups" className="block hover:text-white">Groups</Link>
+            <Link to="/schedule" className="block hover:text-white">Schedule</Link>            <button
+              onClick={handleLogout}
+              className="w-full text-left bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-white"
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );
 };
 
-export default Navbar; 
+export default Navbar;
