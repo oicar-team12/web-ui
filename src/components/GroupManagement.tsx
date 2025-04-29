@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 interface Employee {
   id: string;
@@ -17,6 +17,11 @@ const GroupManagement: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<string>('Housekeeping');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [newGroupName, setNewGroupName] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>('all');
+  const [editingGroup, setEditingGroup] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState<string>('');
+  
   const [groups, setGroups] = useState<Group[]>([
     { id: '1', name: 'Front Desk', memberCount: 2 },
     { id: '2', name: 'Kitchen Staff', memberCount: 3 },
@@ -33,6 +38,40 @@ const GroupManagement: React.FC = () => {
     { id: '4', name: 'Michael Anderson', email: 'michael@example.com', position: 'Chef' },
     { id: '5', name: 'Jessica Thomas', email: 'jessica@example.com', position: 'Server' },
   ]);
+
+  // Get unique roles for filter dropdown
+  const uniqueRoles = useMemo(() => {
+    const roles = new Set<string>();
+    [...members, ...availableEmployees].forEach(emp => {
+      if (emp.position) roles.add(emp.position);
+    });
+    return ['all', ...Array.from(roles)];
+  }, [members, availableEmployees]);
+
+  // Filter and search employees
+  const filteredAvailableEmployees = useMemo(() => {
+    return availableEmployees.filter(emp => {
+      const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (emp.position && emp.position.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesRole = filterRole === 'all' || emp.position === filterRole;
+      
+      return matchesSearch && matchesRole;
+    });
+  }, [availableEmployees, searchTerm, filterRole]);
+
+  const filteredMembers = useMemo(() => {
+    return members.filter(member => {
+      const matchesSearch = member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (member.position && member.position.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesRole = filterRole === 'all' || member.position === filterRole;
+      
+      return matchesSearch && matchesRole;
+    });
+  }, [members, searchTerm, filterRole]);
 
   const handleCreateGroup = () => {
     if (newGroupName.trim()) {
@@ -87,15 +126,39 @@ const GroupManagement: React.FC = () => {
 
   const selectedGroupData = groups.find(group => group.name === selectedGroup);
 
+  const handleStartEdit = (group: Group) => {
+    setEditingGroup(group.id);
+    setEditGroupName(group.name);
+  };
+
+  const handleSaveEdit = (groupId: string) => {
+    if (editGroupName.trim()) {
+      const updatedGroups = groups.map(group => {
+        if (group.id === groupId) {
+          return { ...group, name: editGroupName };
+        }
+        return group;
+      });
+      setGroups(updatedGroups);
+      setEditingGroup(null);
+      setEditGroupName('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingGroup(null);
+    setEditGroupName('');
+  };
+
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Group Management</h1>
-          <p className="text-gray-400">Create and manage employee groups</p>
+          <h1 className="text-2xl font-bold text-light-text dark:text-dark-text">Group Management</h1>
+          <p className="text-light-text-secondary dark:text-dark-text-secondary">Create and manage employee groups</p>
         </div>
         <button 
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200"
           onClick={() => setShowCreateModal(true)}
         >
           Create New Group
@@ -103,25 +166,25 @@ const GroupManagement: React.FC = () => {
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#1e2433] p-6 rounded-lg w-96">
-            <h2 className="text-white text-xl font-bold mb-4">Create New Group</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-light-primary dark:bg-dark-primary p-6 rounded-lg w-96 shadow-xl animate-slide-up">
+            <h2 className="text-light-text dark:text-dark-text text-xl font-bold mb-4">Create New Group</h2>
             <input
               type="text"
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group Name"
-              className="w-full p-2 mb-4 bg-[#252b3b] text-white rounded border border-gray-700 focus:outline-none focus:border-blue-500"
+              className="w-full p-2 mb-4 bg-light-secondary dark:bg-dark-secondary text-light-text dark:text-dark-text rounded border border-light-border dark:border-dark-border focus:outline-none focus:border-blue-500 transition-colors duration-200"
             />
             <div className="flex justify-end space-x-2">
               <button 
-                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                className="px-4 py-2 bg-light-accent dark:bg-dark-accent text-light-text dark:text-dark-text rounded hover:bg-opacity-80 transition-colors duration-200"
                 onClick={() => setShowCreateModal(false)}
               >
                 Cancel
               </button>
               <button 
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-200"
                 onClick={handleCreateGroup}
               >
                 Create
@@ -132,52 +195,127 @@ const GroupManagement: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#1e2433] rounded-lg p-6">
-          <h2 className="text-white text-lg font-semibold mb-4">Groups</h2>
+        <div className="bg-light-primary dark:bg-dark-primary rounded-lg p-6 shadow-sm border border-light-border dark:border-dark-border">
+          <h2 className="text-light-text dark:text-dark-text text-lg font-semibold mb-4">Groups</h2>
           <div className="space-y-2">
             {groups.map((group) => (
-              <button
+              <div
                 key={group.id}
-                onClick={() => setSelectedGroup(group.name)}
-                className={`w-full text-left p-3 rounded flex justify-between items-center ${
-                  selectedGroup === group.name ? 'bg-blue-500' : 'bg-[#252b3b] hover:bg-[#2a2f3e]'
+                className={`w-full p-3 rounded flex justify-between items-center transition-colors duration-200 ${
+                  selectedGroup === group.name 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-light-secondary dark:bg-dark-secondary hover:bg-light-accent dark:hover:bg-dark-accent'
                 }`}
               >
-                <span className="text-white">{group.name}</span>
-                <span className="text-gray-400">{group.memberCount} members</span>
-              </button>
+                {editingGroup === group.id ? (
+                  <div className="flex-1 flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={editGroupName}
+                      onChange={(e) => setEditGroupName(e.target.value)}
+                      className="flex-1 p-1 bg-light-primary dark:bg-dark-primary text-light-text dark:text-dark-text rounded border border-light-border dark:border-dark-border focus:outline-none focus:border-blue-500 transition-colors duration-200"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveEdit(group.id);
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                    />
+                    <button
+                      onClick={() => handleSaveEdit(group.id)}
+                      className="text-green-500 hover:text-green-400 transition-colors duration-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="text-red-500 hover:text-red-400 transition-colors duration-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setSelectedGroup(group.name)}
+                      className="flex-1 text-left"
+                    >
+                      <span className="text-light-text dark:text-dark-text">{group.name}</span>
+                    </button>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-light-text-secondary dark:text-dark-text-secondary">{group.memberCount} members</span>
+                      <button
+                        onClick={() => handleStartEdit(group)}
+                        className="text-light-text-secondary dark:text-dark-text-secondary hover:text-blue-400 transition-colors duration-200"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             ))}
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-[#1e2433] rounded-lg p-6">
+        <div className="md:col-span-2 bg-light-primary dark:bg-dark-primary rounded-lg p-6 shadow-sm border border-light-border dark:border-dark-border">
           {selectedGroupData && (
             <>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-white text-lg font-semibold">{selectedGroup}</h2>
+                <h2 className="text-light-text dark:text-dark-text text-lg font-semibold">{selectedGroup}</h2>
                 <button 
-                  className="text-red-500 hover:text-red-400"
+                  className="text-red-500 hover:text-red-400 transition-colors duration-200"
                   onClick={() => handleDeleteGroup(selectedGroupData.id)}
                 >
                   Delete Group
                 </button>
               </div>
 
+              {/* Search and Filter Controls */}
+              <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search employees..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full p-2 bg-light-secondary dark:bg-dark-secondary text-light-text dark:text-dark-text rounded border border-light-border dark:border-dark-border focus:outline-none focus:border-blue-500 transition-colors duration-200"
+                  />
+                </div>
+                <div className="w-full sm:w-48">
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    className="w-full p-2 bg-light-secondary dark:bg-dark-secondary text-light-text dark:text-dark-text rounded border border-light-border dark:border-dark-border focus:outline-none focus:border-blue-500 transition-colors duration-200"
+                  >
+                    {uniqueRoles.map(role => (
+                      <option key={role} value={role}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="mb-8">
-                <h3 className="text-white font-medium mb-4">Members</h3>
-                {members.length > 0 ? (
+                <h3 className="text-light-text dark:text-dark-text font-medium mb-4">Members</h3>
+                {filteredMembers.length > 0 ? (
                   <div className="space-y-2">
-                    {members.map((member) => (
-                      <div key={member.id} className="flex justify-between items-center p-3 bg-[#252b3b] rounded">
+                    {filteredMembers.map((member) => (
+                      <div key={member.id} className="flex justify-between items-center p-3 bg-light-secondary dark:bg-dark-secondary rounded border border-light-border dark:border-dark-border hover:bg-light-accent dark:hover:bg-dark-accent transition-colors duration-200">
                         <div>
-                          <p className="text-white">{member.name}</p>
-                          <p className="text-gray-400 text-sm">{member.email}</p>
+                          <p className="text-light-text dark:text-dark-text">{member.name}</p>
+                          <p className="text-light-text-secondary dark:text-dark-text-secondary text-sm">{member.email}</p>
                           {member.position && (
-                            <p className="text-gray-500 text-xs">{member.position}</p>
+                            <p className="text-light-text-secondary dark:text-dark-text-secondary text-xs">{member.position}</p>
                           )}
                         </div>
                         <button 
-                          className="text-gray-400 hover:text-red-400"
+                          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-red-400 transition-colors duration-200"
                           onClick={() => handleRemoveMember(member)}
                         >
                           Remove
@@ -186,25 +324,25 @@ const GroupManagement: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-400">No members in this group</p>
+                  <p className="text-light-text-secondary dark:text-dark-text-secondary">No members found</p>
                 )}
               </div>
 
               <div>
-                <h3 className="text-white font-medium mb-4">Available Employees</h3>
-                {availableEmployees.length > 0 ? (
+                <h3 className="text-light-text dark:text-dark-text font-medium mb-4">Available Employees</h3>
+                {filteredAvailableEmployees.length > 0 ? (
                   <div className="space-y-2">
-                    {availableEmployees.map((employee) => (
-                      <div key={employee.id} className="flex justify-between items-center p-3 bg-[#252b3b] rounded">
+                    {filteredAvailableEmployees.map((employee) => (
+                      <div key={employee.id} className="flex justify-between items-center p-3 bg-light-secondary dark:bg-dark-secondary rounded border border-light-border dark:border-dark-border hover:bg-light-accent dark:hover:bg-dark-accent transition-colors duration-200">
                         <div>
-                          <p className="text-white">{employee.name}</p>
-                          <p className="text-gray-400 text-sm">{employee.email}</p>
+                          <p className="text-light-text dark:text-dark-text">{employee.name}</p>
+                          <p className="text-light-text-secondary dark:text-dark-text-secondary text-sm">{employee.email}</p>
                           {employee.position && (
-                            <p className="text-gray-500 text-xs">{employee.position}</p>
+                            <p className="text-light-text-secondary dark:text-dark-text-secondary text-xs">{employee.position}</p>
                           )}
                         </div>
                         <button 
-                          className="text-blue-400 hover:text-blue-300"
+                          className="text-blue-400 hover:text-blue-300 transition-colors duration-200"
                           onClick={() => handleAddMember(employee)}
                         >
                           Add
@@ -213,7 +351,7 @@ const GroupManagement: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-400">No available employees to add</p>
+                  <p className="text-light-text-secondary dark:text-dark-text-secondary">No available employees found</p>
                 )}
               </div>
             </>
