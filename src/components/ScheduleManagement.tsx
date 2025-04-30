@@ -91,8 +91,8 @@ const ScheduleManagement: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Schedule Management</h1>
-          <p className="text-gray-400">Create and manage employee shifts</p>
+          <h1 className="text-2xl font-bold text-light-text dark:text-dark-text">Schedule Management</h1>
+          <p className="text-light-text-secondary dark:text-dark-text-secondary">Create and manage employee shifts</p>
         </div>
         <button
           onClick={() => openModal()}

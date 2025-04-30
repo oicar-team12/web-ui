@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import TotalStaffModal from './modals/TotalStaffModal';
 import AvailableTodayModal from './modals/AvailableTodayModal';
@@ -52,7 +53,7 @@ const Dashboard: React.FC = () => {
 
   const fetchEmployees = () => {
     axios
-      .get('http://localhost:5000/employees')
+      .get<Employee[]>('http://localhost:5000/employees')
       .then((res) => setEmployees(res.data))
       .catch((err) => console.error('Failed to fetch employees:', err));
   };
@@ -113,8 +114,8 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-1">Welcome back, Manager</h1>
-        <p className="text-gray-400">Here’s what’s happening with your team today</p>
+        <h1 className="text-2xl font-bold text-light-text dark:text-dark-text">Welcome back, Manager</h1>
+        <p className="text-light-text-secondary dark:text-dark-text-secondary">Here's what's happening with your team today</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -125,9 +126,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#1e2433] rounded-lg p-6">
+        <div className="bg-light-primary dark:bg-dark-primary rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-white text-lg font-semibold">Today's Shifts</h2>
+            <h2 className="text-light-text dark:text-dark-text text-lg font-semibold">Today's Shifts</h2>
             <button
               onClick={() => handleCardClick("Today's Shifts")}
               className="text-blue-400 hover:text-blue-300"
@@ -139,16 +140,16 @@ const Dashboard: React.FC = () => {
             {employees
               .filter((emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart).toISOString().split('T')[0] === today)
               .map((employee) => (
-                <div key={employee.id} className="flex justify-between items-center p-3 bg-[#252b3b] rounded">
+                <div key={employee.id} className="flex justify-between items-center p-3 bg-light-accent dark:bg-dark-accent rounded">
                   <div>
-                    <h3 className="text-white font-medium">{employee.name}</h3>
+                    <h3 className="text-light-text dark:text-dark-text font-medium">{employee.name}</h3>
                     <p className="text-gray-400 text-sm">
                       {employee.position} • {employee.group.name}
                     </p>
                     <p className="text-gray-500 text-xs">{employee.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white">
+                    <p className="text-light-text dark:text-dark-text">
                       {new Date(employee.shiftStart).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -166,10 +167,15 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-[#1e2433] rounded-lg p-6">
+        <div className="bg-light-primary dark:bg-dark-primary rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-white text-lg font-semibold">Recent Activity</h2>
-            <button className="text-blue-400 hover:text-blue-300">View All Activity</button>
+            <h2 className="text-light-text dark:text-dark-text text-lg font-semibold">Recent Activity</h2>
+            <Link
+              to="/activity"
+              className="text-blue-400 hover:text-blue-300"
+            >
+              View All Activity
+            </Link>
           </div>
           <div className="space-y-4 text-gray-400">
             <div>
@@ -188,10 +194,10 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-8 bg-[#1e2433] p-6 rounded-lg">
+      <div className="mt-8 bg-light-primary dark:bg-dark-primary p-6 rounded-lg">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-white font-medium">Need to create a new shift?</h2>
+            <h2 className="text-light-text dark:text-dark-text font-medium">Need to create a new shift?</h2>
             <p className="text-gray-400">Quickly assign shifts to your team members</p>
           </div>
           <button

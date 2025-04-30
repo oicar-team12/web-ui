@@ -4,6 +4,9 @@ import { AnimatePresence } from 'framer-motion';
 import Navbar from './components/Navbar';
 import PageTransition from './components/PageTransition';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import Login from './components/Login';
+import Register from './components/Register';
 
 // Lazy load components
 const Home = React.lazy(() => import('./components/Home'));
@@ -12,6 +15,7 @@ const GroupManagement = React.lazy(() => import('./components/GroupManagement'))
 const ScheduleManagement = React.lazy(() => import('./components/ScheduleManagement'));
 const EmployeeDetailPage = React.lazy(() => import('./components/pages/EmployeeDetailPage'));
 const ActivityPage = React.lazy(() => import('./components/pages/ActivityPage'));
+const UserProfile = React.lazy(() => import('./components/UserProfile'));
 
 // Loading component with improved styling
 const Loading = () => (
@@ -27,11 +31,14 @@ const AppRoutes = () => {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+        <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
         <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
         <Route path="/groups" element={<PageTransition><GroupManagement /></PageTransition>} />
         <Route path="/schedule" element={<PageTransition><ScheduleManagement /></PageTransition>} />
         <Route path="/employee/:id" element={<PageTransition><EmployeeDetailPage /></PageTransition>} />
         <Route path="/activity" element={<PageTransition><ActivityPage /></PageTransition>} />
+        <Route path="/profile" element={<PageTransition><UserProfile /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );
@@ -40,16 +47,18 @@ const AppRoutes = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <Router>
-        <div className="min-h-screen bg-light-secondary dark:bg-dark-secondary transition-colors duration-200">
-          <Navbar onLogout={() => { }} />
-          <main>
-            <Suspense fallback={<Loading />}>
-              <AppRoutes />
-            </Suspense>
-          </main>
-        </div>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-light-secondary dark:bg-dark-secondary transition-colors duration-200">
+            <Navbar />
+            <main>
+              <Suspense fallback={<Loading />}>
+                <AppRoutes />
+              </Suspense>
+            </main>
+          </div>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 };
