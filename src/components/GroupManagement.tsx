@@ -1,43 +1,52 @@
-import React, { useState, useMemo } from 'react';
-
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-  position?: string;
-}
-
-interface Group {
-  id: string;
-  name: string;
-  memberCount: number;
-}
+import React, { useState, useMemo, useEffect } from 'react';
+import { groupAPI, employeeAPI, Employee, Group } from '../services/api';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const GroupManagement: React.FC = () => {
-  const [selectedGroup, setSelectedGroup] = useState<string>('Housekeeping');
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [newGroupName, setNewGroupName] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
   const [editGroupName, setEditGroupName] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
   
-  const [groups, setGroups] = useState<Group[]>([
-    { id: '1', name: 'Front Desk', memberCount: 2 },
-    { id: '2', name: 'Kitchen Staff', memberCount: 3 },
-    { id: '3', name: 'Housekeeping', memberCount: 2 },
-  ]);
-  
-  const [members, setMembers] = useState<Employee[]>([
-    { id: '1', name: 'Emily Davis', email: 'emily@example.com', position: 'Receptionist' },
-    { id: '2', name: 'Robert Wilson', email: 'robert@example.com', position: 'Front Desk Manager' },
-  ]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [members, setMembers] = useState<Employee[]>([]);
+  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([]);
 
-  const [availableEmployees, setAvailableEmployees] = useState<Employee[]>([
-    { id: '3', name: 'Lisa Taylor', email: 'lisa@example.com', position: 'Housekeeper' },
-    { id: '4', name: 'Michael Anderson', email: 'michael@example.com', position: 'Chef' },
-    { id: '5', name: 'Jessica Thomas', email: 'jessica@example.com', position: 'Server' },
-  ]);
+  // Fetch groups and employees on component mount
+  useEffect(() => {
+    fetchGroups();
+    fetchEmployees();
+  }, []);
+
+  const fetchGroups = async () => {
+    try {
+      const response = await groupAPI.getGroups();
+      setGroups(response.data);
+      if (response.data.length > 0 && !selectedGroup) {
+        setSelectedGroup(response.data[0].name);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch groups');
+      console.error('Error fetching groups:', error);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await employeeAPI.getEmployees();
+      setAvailableEmployees(response.data);
+    } catch (error) {
+      toast.error('Failed to fetch employees');
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Get unique roles for filter dropdown
   const uniqueRoles = useMemo(() => {
@@ -73,75 +82,109 @@ const GroupManagement: React.FC = () => {
     });
   }, [members, searchTerm, filterRole]);
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (newGroupName.trim()) {
-      const newGroup: Group = {
-        id: Date.now().toString(),
-        name: newGroupName,
-        memberCount: 0
-      };
-      setGroups([...groups, newGroup]);
-      setNewGroupName('');
-      setShowCreateModal(false);
+      try {
+        const response = await groupAPI.createGroup({ name: newGroupName });
+        setGroups([...groups, response.data]);
+        setNewGroupName('');
+        setShowCreateModal(false);
+        toast.success('Group created successfully');
+      } catch (error) {
+        toast.error('Failed to create group');
+        console.error('Error creating group:', error);
+      }
     }
   };
 
-  const handleDeleteGroup = (groupId: string) => {
+  const handleDeleteGroup = async (groupId: string) => {
     if (window.confirm('Are you sure you want to delete this group?')) {
-      const updatedGroups = groups.filter(group => group.id !== groupId);
-      setGroups(updatedGroups);
-      if (updatedGroups.length > 0) {
-        setSelectedGroup(updatedGroups[0].name);
+      try {
+        await groupAPI.deleteGroup(groupId);
+        const updatedGroups = groups.filter(group => group.id !== groupId);
+        setGroups(updatedGroups);
+        if (updatedGroups.length > 0) {
+          setSelectedGroup(updatedGroups[0].name);
+        }
+        toast.success('Group deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete group');
+        console.error('Error deleting group:', error);
       }
     }
   };
 
-  const handleAddMember = (employee: Employee) => {
-    setMembers([...members, employee]);
-    setAvailableEmployees(availableEmployees.filter(emp => emp.id !== employee.id));
-    
-    // Update member count
-    const updatedGroups = groups.map(group => {
-      if (group.name === selectedGroup) {
-        return { ...group, memberCount: group.memberCount + 1 };
+  const handleAddMember = async (employee: Employee) => {
+    try {
+      const selectedGroupData = groups.find(group => group.name === selectedGroup);
+      if (selectedGroupData) {
+        await groupAPI.addMemberToGroup(selectedGroupData.id, employee.id);
+        setMembers([...members, employee]);
+        setAvailableEmployees(availableEmployees.filter(emp => emp.id !== employee.id));
+        
+        // Update member count
+        const updatedGroups = groups.map(group => {
+          if (group.name === selectedGroup) {
+            return { ...group, memberCount: group.memberCount + 1 };
+          }
+          return group;
+        });
+        setGroups(updatedGroups);
+        toast.success('Member added successfully');
       }
-      return group;
-    });
-    setGroups(updatedGroups);
+    } catch (error) {
+      toast.error('Failed to add member');
+      console.error('Error adding member:', error);
+    }
   };
 
-  const handleRemoveMember = (employee: Employee) => {
-    setMembers(members.filter(member => member.id !== employee.id));
-    setAvailableEmployees([...availableEmployees, employee]);
-    
-    // Update member count
-    const updatedGroups = groups.map(group => {
-      if (group.name === selectedGroup) {
-        return { ...group, memberCount: group.memberCount - 1 };
+  const handleRemoveMember = async (employee: Employee) => {
+    try {
+      const selectedGroupData = groups.find(group => group.name === selectedGroup);
+      if (selectedGroupData) {
+        await groupAPI.removeMemberFromGroup(selectedGroupData.id, employee.id);
+        setMembers(members.filter(member => member.id !== employee.id));
+        setAvailableEmployees([...availableEmployees, employee]);
+        
+        // Update member count
+        const updatedGroups = groups.map(group => {
+          if (group.name === selectedGroup) {
+            return { ...group, memberCount: group.memberCount - 1 };
+          }
+          return group;
+        });
+        setGroups(updatedGroups);
+        toast.success('Member removed successfully');
       }
-      return group;
-    });
-    setGroups(updatedGroups);
+    } catch (error) {
+      toast.error('Failed to remove member');
+      console.error('Error removing member:', error);
+    }
   };
-
-  const selectedGroupData = groups.find(group => group.name === selectedGroup);
 
   const handleStartEdit = (group: Group) => {
     setEditingGroup(group.id);
     setEditGroupName(group.name);
   };
 
-  const handleSaveEdit = (groupId: string) => {
+  const handleSaveEdit = async (groupId: string) => {
     if (editGroupName.trim()) {
-      const updatedGroups = groups.map(group => {
-        if (group.id === groupId) {
-          return { ...group, name: editGroupName };
-        }
-        return group;
-      });
-      setGroups(updatedGroups);
-      setEditingGroup(null);
-      setEditGroupName('');
+      try {
+        await groupAPI.updateGroup(groupId, { name: editGroupName });
+        const updatedGroups = groups.map(group => {
+          if (group.id === groupId) {
+            return { ...group, name: editGroupName };
+          }
+          return group;
+        });
+        setGroups(updatedGroups);
+        setEditingGroup(null);
+        setEditGroupName('');
+        toast.success('Group updated successfully');
+      } catch (error) {
+        toast.error('Failed to update group');
+        console.error('Error updating group:', error);
+      }
     }
   };
 
@@ -149,6 +192,14 @@ const GroupManagement: React.FC = () => {
     setEditingGroup(null);
     setEditGroupName('');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 animate-fade-in">
@@ -263,13 +314,13 @@ const GroupManagement: React.FC = () => {
         </div>
 
         <div className="md:col-span-2 bg-light-primary dark:bg-dark-primary rounded-lg p-6 shadow-sm border border-light-border dark:border-dark-border">
-          {selectedGroupData && (
+          {selectedGroup && (
             <>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-light-text dark:text-dark-text text-lg font-semibold">{selectedGroup}</h2>
                 <button 
                   className="text-red-500 hover:text-red-400 transition-colors duration-200"
-                  onClick={() => handleDeleteGroup(selectedGroupData.id)}
+                  onClick={() => handleDeleteGroup(selectedGroup)}
                 >
                   Delete Group
                 </button>

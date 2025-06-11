@@ -1,11 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface Employee {
-  id: string;
-  name: string;
-  daysOff: string[];
-}
+import { Employee } from '../../services/api'; // Import Employee from the central API service
 
 interface ModalProps {
   employees: Employee[];
@@ -32,7 +27,7 @@ const TimeOffModal: React.FC<ModalProps> = ({ employees, onClose }) => {
               onClick={() => handleClick(emp.id)}
             >
               <p className="font-medium">{emp.name}</p>
-              <p className="text-sm text-gray-400">Days Off: {emp.daysOff.join(', ')}</p>
+              <p className="text-sm text-gray-400">Days Off: {emp.daysOff && emp.daysOff.join(', ')}</p>
             </li>
           ))}
         </ul>

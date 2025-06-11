@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { employeeAPI, Employee, Group } from '../services/api';
 import TotalStaffModal from './modals/TotalStaffModal';
 import AvailableTodayModal from './modals/AvailableTodayModal';
 import CurrentlyOnShiftModal from './modals/CurrentlyOnShiftModal';
@@ -8,23 +8,6 @@ import TimeOffModal from './modals/TimeOffModal';
 import TodaysShiftsModal from './modals/TodaysShiftsModal';
 import CreateShiftModal from './modals/CreateShiftModal';
 import RecentActivityModal from './modals/RecentActivityModal';
-
-interface Group {
-  id: number;
-  name: string;
-}
-
-interface Employee {
-  id: string;
-  name: string;
-  position: string;
-  email: string;
-  shiftStart: string;
-  shiftEnd: string;
-  daysOff: string[];
-  notes: string;
-  group: Group;
-}
 
 interface StatsCardProps {
   title: string;
@@ -51,28 +34,30 @@ const Dashboard: React.FC = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const fetchEmployees = () => {
-    axios
-      .get<Employee[]>('http://localhost:5000/employees')
-      .then((res) => setEmployees(res.data))
-      .catch((err) => console.error('Failed to fetch employees:', err));
+  const fetchEmployees = async () => {
+    try {
+      const res = await employeeAPI.getEmployees();
+      setEmployees(res.data);
+    } catch (err) {
+      console.error('Failed to fetch employees:', err);
+    }
   };
 
   useEffect(() => {
     fetchEmployees();
   }, []);
 
-  const isValidDate = (date: string) => !isNaN(Date.parse(date));
+  const isValidDate = (date: string | undefined) => date && !isNaN(Date.parse(date));
 
   const stats = {
     totalStaff: employees.length,
-    availableToday: employees.filter((emp) => !emp.daysOff.includes(today)).length,
+    availableToday: employees.filter((emp) => emp.daysOff && !emp.daysOff.includes(today)).length,
     currentlyOnShift: employees.filter((emp) => {
-      if (!isValidDate(emp.shiftStart)) return false; // Skip invalid dates
-      const shiftDate = new Date(emp.shiftStart).toISOString().split('T')[0];
+      if (!isValidDate(emp.shiftStart)) return false;
+      const shiftDate = new Date(emp.shiftStart!).toISOString().split('T')[0];
       return shiftDate === today;
     }).length,
-    timeOff: employees.filter((emp) => emp.daysOff.includes(today)).length,
+    timeOff: employees.filter((emp) => emp.daysOff && emp.daysOff.includes(today)).length,
   };
 
   const handleCardClick = (type: string) => {
@@ -83,19 +68,19 @@ const Dashboard: React.FC = () => {
         data = employees;
         break;
       case 'Available Today':
-        data = employees.filter((emp) => !emp.daysOff.includes(today));
+        data = employees.filter((emp) => emp.daysOff && !emp.daysOff.includes(today));
         break;
       case 'Currently on Shift':
         data = employees.filter(
-          (emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart).toISOString().split('T')[0] === today
+          (emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart!).toISOString().split('T')[0] === today
         );
         break;
       case 'Time Off':
-        data = employees.filter((emp) => emp.daysOff.includes(today));
+        data = employees.filter((emp) => emp.daysOff && emp.daysOff.includes(today));
         break;
       case "Today's Shifts":
         data = employees.filter(
-          (emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart).toISOString().split('T')[0] === today
+          (emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart!).toISOString().split('T')[0] === today
         );
         break;
     }
@@ -138,29 +123,28 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="space-y-4 max-h-[400px] overflow-y-auto">
             {employees
-              .filter((emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart).toISOString().split('T')[0] === today)
+              .filter((emp) => isValidDate(emp.shiftStart) && new Date(emp.shiftStart!).toISOString().split('T')[0] === today)
               .map((employee) => (
                 <div key={employee.id} className="flex justify-between items-center p-3 bg-light-accent dark:bg-dark-accent rounded">
                   <div>
                     <h3 className="text-light-text dark:text-dark-text font-medium">{employee.name}</h3>
                     <p className="text-gray-400 text-sm">
-                      {employee.position} • {employee.group.name}
+                      {employee.position} • {employee.group?.name}
                     </p>
                     <p className="text-gray-500 text-xs">{employee.email}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-light-text dark:text-dark-text">
-                      {new Date(employee.shiftStart).toLocaleTimeString([], {
+                      {employee.shiftStart && new Date(employee.shiftStart).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
-                      })}{' '}
-                      -{' '}
-                      {new Date(employee.shiftEnd).toLocaleTimeString([], {
+                      })} -{' '}
+                      {employee.shiftEnd && new Date(employee.shiftEnd).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </p>
-                    <p className="text-gray-400 text-sm">{new Date(employee.shiftStart).toLocaleDateString()}</p>
+                    <p className="text-gray-400 text-sm">{employee.shiftStart && new Date(employee.shiftStart).toLocaleDateString()}</p>
                   </div>
                 </div>
               ))}

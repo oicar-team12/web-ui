@@ -1,17 +1,7 @@
 // src/components/modals/TodaysShiftsModal.tsx
 import React from 'react';
+import { Employee } from '../../services/api'; // Import Employee from the central API service
 
-
-interface Employee {
-    id: string;
-    name: string;
-    position: string;
-    email: string;
-    shiftStart: string;
-    shiftEnd: string;
-    daysOff: string[];
-    notes: string;
-  }
 interface TodaysShiftsModalProps {
   employees: Employee[];
   onClose: () => void;
@@ -41,18 +31,18 @@ const TodaysShiftsModal: React.FC<TodaysShiftsModalProps> = ({ employees, onClos
                 </div>
                 <div className="text-right">
                   <p className="text-white">
-                    {new Date(employee.shiftStart).toLocaleTimeString([], {
+                    {employee.shiftStart && new Date(employee.shiftStart).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}{' '}
                     -{' '}
-                    {new Date(employee.shiftEnd).toLocaleTimeString([], {
+                    {employee.shiftEnd && new Date(employee.shiftEnd).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </p>
                   <p className="text-gray-400 text-sm">
-                    {new Date(employee.shiftStart).toLocaleDateString()}
+                    {employee.shiftStart && new Date(employee.shiftStart).toLocaleDateString()}
                   </p>
                 </div>
               </div>

@@ -1,12 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface Employee {
-  id: string;
-  name: string;
-  shiftStart: string;
-  shiftEnd: string;
-}
+import { Employee } from '../../services/api'; // Import Employee from the central API service
 
 interface ModalProps {
   employees: Employee[];
@@ -34,8 +28,8 @@ const CurrentlyOnShiftModal: React.FC<ModalProps> = ({ employees, onClose }) => 
             >
               <p className="font-medium">{emp.name}</p>
               <p className="text-sm text-gray-400">
-                {new Date(emp.shiftStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                {new Date(emp.shiftEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {emp.shiftStart && new Date(emp.shiftStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
+                {emp.shiftEnd && new Date(emp.shiftEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </li>
           ))}

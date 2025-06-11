@@ -1,11 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface Employee {
-  id: string;
-  name: string;
-  position: string;
-}
+import { Employee } from '../../services/api'; // Import Employee from the central API service
 
 interface ModalProps {
   employees: Employee[];
