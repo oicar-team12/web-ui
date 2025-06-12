@@ -11,13 +11,16 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import UserProfile from './components/UserProfile';
-import { GroupList } from './components/groups/GroupList';
-import { GroupDetail } from './components/groups/GroupDetail';
-import EmployeeManagement from './components/EmployeeManagement';
+import DashboardShifts from './components/dashboard/DashboardShifts';
+import DashboardSchedules from './components/dashboard/DashboardSchedules';
+import DashboardAvailabilities from './components/dashboard/DashboardAvailabilities';
+import DashboardMembers from './components/dashboard/DashboardMembers';
+import { GroupProvider } from './context/GroupContext';
+import GroupManagement from './components/groups/GroupManagement';
+import ScheduleManagement from './components/ScheduleManagement';
 
 // Lazy load components
 const Home = React.lazy(() => import('./components/Home'));
-const ScheduleManagement = React.lazy(() => import('./components/ScheduleManagement'));
 const EmployeeDetailPage = React.lazy(() => import('./components/pages/EmployeeDetailPage'));
 const ActivityPage = React.lazy(() => import('./components/pages/ActivityPage'));
 
@@ -51,34 +54,34 @@ const AppRoutes = () => {
           }
         />
         <Route 
-          path="/groups" 
+          path="/dashboard/shifts" 
           element={
             <PrivateRoute>
-              <PageTransition><GroupList /></PageTransition>
+              <PageTransition><DashboardShifts /></PageTransition>
             </PrivateRoute>
           } 
         />
         <Route 
-          path="/groups/:groupId" 
+          path="/dashboard/schedules" 
           element={
             <PrivateRoute>
-              <PageTransition><GroupDetail /></PageTransition>
+              <PageTransition><DashboardSchedules /></PageTransition>
             </PrivateRoute>
           } 
         />
         <Route 
-          path="/employees" 
+          path="/dashboard/availabilities" 
           element={
             <PrivateRoute>
-              <PageTransition><EmployeeManagement /></PageTransition>
+              <PageTransition><DashboardAvailabilities /></PageTransition>
             </PrivateRoute>
           } 
         />
         <Route 
-          path="/schedule" 
+          path="/dashboard/members" 
           element={
             <PrivateRoute>
-              <PageTransition><ScheduleManagement /></PageTransition>
+              <PageTransition><DashboardMembers /></PageTransition>
             </PrivateRoute>
           } 
         />
@@ -102,12 +105,27 @@ const AppRoutes = () => {
           path="/profile" 
           element={
             <PrivateRoute>
-              <PageTransition>
-                <UserProfile />
-              </PageTransition>
+              <PageTransition><UserProfile /></PageTransition>
             </PrivateRoute>
           } 
         />
+        <Route 
+          path="/groups" 
+          element={
+            <PrivateRoute>
+              <PageTransition><GroupManagement /></PageTransition>
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/schedule" 
+          element={
+            <PrivateRoute>
+              <PageTransition><ScheduleManagement /></PageTransition>
+            </PrivateRoute>
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
   );
@@ -115,32 +133,34 @@ const AppRoutes = () => {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
-      <Router>
+    <Router>
+      <ThemeProvider>
         <AuthProvider>
-          <div className="min-h-screen bg-light-secondary dark:bg-dark-secondary transition-colors duration-200">
-            <Navbar />
-            <main>
-              <Suspense fallback={<Loading />}>
-                <AppRoutes />
-              </Suspense>
-            </main>
-            <ToastContainer
-              position="top-right"
-              autoClose={3000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-          </div>
+          <GroupProvider>
+            <div className="min-h-screen bg-light-secondary dark:bg-dark-secondary transition-colors duration-200">
+              <Navbar />
+              <main className="container mx-auto px-4 py-8">
+                <Suspense fallback={<Loading />}>
+                  <AppRoutes />
+                </Suspense>
+              </main>
+              <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+            </div>
+          </GroupProvider>
         </AuthProvider>
-      </Router>
-    </ThemeProvider>
+      </ThemeProvider>
+    </Router>
   );
 };
 

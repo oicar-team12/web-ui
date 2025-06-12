@@ -1,59 +1,74 @@
 import React, { useState, useEffect } from 'react';
+import { User } from '../../types/user';
+import shiftService from '../../services/shiftService';
+import { CreateShiftRequest } from '../../types/shift';
+import { toast } from 'react-toastify';
+import { ShiftStatus } from '../../types/shift';
 
 interface CreateShiftModalProps {
   onClose: () => void;
   onShiftCreated: () => void;
+  employees: User[];
+  groupId: string;
 }
 
-interface Employee {
-  id: string;
-  name: string;
-}
-
-const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCreated }) => {
+const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCreated, employees, groupId }) => {
   const [shiftName, setShiftName] = useState('');
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [notes, setNotes] = useState('');
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  // const [employees, setEmployees] = useState<User[]>([]); // Removed internal state
 
-  // Fetch employees when the modal is opened
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/employees');
-        if (response.ok) {
-          const data = await response.json();
-          setEmployees(data);
-        } else {
-          console.error('Error fetching employees');
-        }
-      } catch (error) {
-        console.error('Error fetching employees:', error);
-      }
-    };
+  // No need to fetch employees here, they are passed as a prop
+  // useEffect(() => {
+  //   const fetchEmployees = async () => {
+  //     try {
+  //       const response = await fetch('http://localhost:5000/employees');
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         setEmployees(data);
+  //       } else {
+  //         console.error('Error fetching employees');
+  //       }
+  //     } catch (error) {
+  //       console.error('Error fetching employees:', error);
+  //     }
+  //   };
 
-    fetchEmployees();
-  }, []); // Empty dependency array ensures this runs once when the component mounts
+  //   fetchEmployees();
+  // }, []);
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newShift = {
-      shiftName,
-      shiftStart,
-      shiftEnd,
+    if (!selectedEmployeeId || !groupId) {
+      toast.error('Please select an employee and ensure a group is selected.');
+      return;
+    }
+
+    const newShift: CreateShiftRequest = {
+      groupId,
       employeeId: selectedEmployeeId,
-      notes
+      name: shiftName,
+      date: new Date().toISOString().split('T')[0], // Assuming today's date for simplicity
+      startTime: shiftStart,
+      endTime: shiftEnd,
+      notes,
+      status: ShiftStatus.SCHEDULED, // Default status
+      // position: '' // Position is not part of CreateShiftRequest
     };
 
-    // Example: axios.post('/api/shifts', newShift)
-    console.log('New Shift Created:', newShift);
-
-    onShiftCreated(); // Refresh employee data
-    onClose(); // Close the modal
+    try {
+      await shiftService.createShift(groupId, newShift);
+      toast.success('Shift created successfully!');
+      onShiftCreated();
+      onClose();
+    } catch (error) {
+      console.error('Failed to create shift:', error);
+      toast.error('Failed to create shift.');
+    }
   };
 
   return (
@@ -86,7 +101,7 @@ const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCre
               <option value="" disabled>Select an employee</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
-                  {employee.name}
+                  {employee.firstName} {employee.lastName}
                 </option>
               ))}
             </select>

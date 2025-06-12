@@ -1,26 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-
-interface Employee {
-  id: string;
-  name: string;
-  position: string;
-}
-
-interface Shift {
-  id: string;
-  date: string;
-  position: string;
-  start: string;
-  end: string;
-  assignedEmployees: string[];
-}
+import { Shift, ShiftStatus } from '../types/shift'; // Import global Shift type
+import { User } from '../types/user'; // Import global User type
 
 interface ShiftModalProps {
   onClose: () => void;
-  onSave: (shift: Shift) => void;
-  employees: Employee[];
-  initialShift?: Shift | null;
+  onSave: (shift: Partial<Shift>) => void; // Expect Partial<Shift> compatible with CreateShiftRequest
+  employees: User[]; // Use User type for employees
+  initialShift?: Partial<Shift> | null;
 }
 
 const ShiftModal: React.FC<ShiftModalProps> = ({
@@ -29,37 +16,24 @@ const ShiftModal: React.FC<ShiftModalProps> = ({
   employees,
   initialShift,
 }) => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Partial<Shift>>({
     id: initialShift?.id || uuidv4(),
     date: initialShift?.date || '',
-    position: initialShift?.position || '',
-    start: initialShift?.start || '',
-    end: initialShift?.end || '',
-    assignedEmployees: initialShift?.assignedEmployees || [],
+    startTime: initialShift?.startTime || '',
+    endTime: initialShift?.endTime || '',
+    employeeId: initialShift?.employeeId || '',
+    status: initialShift?.status || ShiftStatus.SCHEDULED, // Default status
   });
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const toggleEmployee = (id: string) => {
-    setForm((prev) => ({
-      ...prev,
-      assignedEmployees: prev.assignedEmployees.includes(id)
-        ? prev.assignedEmployees.filter((e) => e !== id)
-        : [...prev.assignedEmployees, id],
-    }));
+    setForm((prev) => ({ ...prev, [name]: value as ShiftStatus })); // Explicitly cast value to ShiftStatus
   };
 
   const handleSubmit = () => {
-    if (!form.date || !form.position || !form.start || !form.end) {
+    if (!form.date || !form.startTime || !form.endTime || !form.employeeId) {
       setError('Please fill in all fields.');
-      return;
-    }
-    if (form.assignedEmployees.length === 0) {
-      setError('Please assign at least one employee.');
       return;
     }
     onSave(form);
@@ -81,48 +55,63 @@ const ShiftModal: React.FC<ShiftModalProps> = ({
             value={form.date}
             onChange={handleChange}
             className="w-full p-2 rounded bg-[#252b3b] text-white border border-gray-700"
+            required
           />
-          <input
-            name="position"
-            placeholder="Position"
-            value={form.position}
-            onChange={handleChange}
-            className="w-full p-2 rounded bg-[#252b3b] text-white border border-gray-700"
-          />
+          {/* Removed position input as it's not in your Shift type */}
           <div className="grid grid-cols-2 gap-3">
             <input
-              name="start"
+              name="startTime"
               type="time"
-              value={form.start}
+              value={form.startTime}
               onChange={handleChange}
               className="p-2 rounded bg-[#252b3b] text-white border border-gray-700"
+              required
             />
             <input
-              name="end"
+              name="endTime"
               type="time"
-              value={form.end}
+              value={form.endTime}
               onChange={handleChange}
               className="p-2 rounded bg-[#252b3b] text-white border border-gray-700"
+              required
             />
           </div>
 
           <div>
-            <p className="text-white font-medium mb-2">Assign Employees</p>
-            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+            <label htmlFor="employeeId" className="block text-white font-medium mb-2">Assign Employee</label>
+            <select
+              name="employeeId"
+              id="employeeId"
+              value={form.employeeId}
+              onChange={handleChange}
+              className="w-full p-2 rounded bg-[#252b3b] text-white border border-gray-700"
+              required
+            >
+              <option value="">Select Employee</option>
               {employees.map((emp) => (
-                <label
-                  key={emp.id}
-                  className="flex items-center space-x-2 bg-[#252b3b] p-2 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.assignedEmployees.includes(emp.id)}
-                    onChange={() => toggleEmployee(emp.id)}
-                  />
-                  <span className="text-white text-sm">{emp.name}</span>
-                </label>
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName} ({emp.position})
+                </option>
               ))}
-            </div>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="status" className="block text-white font-medium mb-2">Status</label>
+            <select
+              name="status"
+              id="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full p-2 rounded bg-[#252b3b] text-white border border-gray-700"
+              required
+            >
+              {(Object.values(ShiftStatus) as ShiftStatus[]).map((status) => (
+                <option key={status} value={status}>
+                  {status.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

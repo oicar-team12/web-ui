@@ -12,6 +12,7 @@ interface AuthContextType {
   register: (userData: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,6 +104,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   };
 
+  const deleteAccount = async () => {
+    try {
+      setError(null);
+      await authService.deleteAccount();
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+    } catch (err: any) {
+      console.error('Delete account error:', err);
+      const errorMessage = err.message || 'Failed to delete account. Please try again.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -112,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     clearError,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,123 +1,90 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useGroup } from '../context/GroupContext';
+import { config } from '../config';
+import groupService from '../services/groupService';
+import { Group } from '../types/group';
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { selectedGroupId, setSelectedGroupId } = useGroup();
   const navigate = useNavigate();
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const data = await groupService.getGroups();
+      setGroups(data);
+
+      // If a group is already selected in context (from localStorage), try to find it.
+      // Otherwise, select the first group from the fetched data.
+      if (data.length > 0) {
+        const initialGroup = selectedGroupId 
+          ? data.find(g => g.id === selectedGroupId) 
+          : data[0];
+        
+        if (initialGroup) {
+          setSelectedGroupId(initialGroup.id);
+        } else if (data.length > 0) { // Fallback if selectedGroupId from localStorage doesn't exist anymore
+          setSelectedGroupId(data[0].id);
+        }
+      }
+    };
+    fetchGroups();
+  }, [selectedGroupId, setSelectedGroupId]); // Add selectedGroupId to dependency array to re-run if it changes from external source
 
   const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
+    await logout();
+    setSelectedGroupId(null); // Clear selected group on logout
+    navigate('/login');
+  };
+
+  const handleGroupChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const groupId = event.target.value;
+    setSelectedGroupId(groupId); // Update context (and localStorage via GroupContext)
   };
 
   return (
-    <nav className="bg-light-primary dark:bg-dark-primary shadow-lg transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <Link to="/" className="flex items-center">
-              <span className="text-xl font-bold text-light-text dark:text-dark-text">ShiftSync</span>
-            </Link>
-          </div>
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/dashboard"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/groups"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Groups
-                </Link>
-                <Link
-                  to="/employees"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Employees
-                </Link>
-                <Link
-                  to="/schedule"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Schedule
-                </Link>
-                <Link
-                  to="/activity"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Activity
-                </Link>
-                <Link
-                  to="/profile"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-md text-light-text dark:text-dark-text hover:bg-light-accent dark:hover:bg-dark-accent transition-colors duration-200"
-                >
-                  {theme === 'dark' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="text-light-text dark:text-dark-text hover:text-blue-500 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                >
-                  Register
-                </Link>
-                <button
-                  onClick={toggleTheme}
-                  className="p-2 rounded-md text-light-text dark:text-dark-text hover:bg-light-accent dark:hover:bg-dark-accent transition-colors duration-200"
-                >
-                  {theme === 'dark' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    <nav className="bg-gray-900 px-4 py-2 flex items-center justify-between shadow-md">
+      <div className="flex items-center gap-8">
+        <Link to="/" className="text-2xl font-bold text-white tracking-tight">ShiftSync</Link>
+        <Link to="/dashboard" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Dashboard</Link>
+        <Link to="/schedule" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Schedule</Link>
+        <Link to="/groups" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Groups</Link>
+        {groups.length > 0 && (
+          <select
+            value={selectedGroupId || ''}
+            onChange={handleGroupChange}
+            className="ml-4 bg-gray-800 text-gray-200 border border-gray-700 rounded px-2 py-1"
+          >
+            {groups.map(group => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleTheme}
+          className="text-gray-300 hover:text-white px-3 py-2 rounded transition"
+        >
+          {theme === 'dark' ? '🌞' : '🌙'}
+        </button>
+        {config.mockMode && (
+          <span className="text-yellow-400 text-sm px-2 py-1 bg-yellow-900/30 rounded">
+            Mock Mode
+          </span>
+        )}
+        <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Profile</Link>
+        <button
+          onClick={handleLogout}
+          className="text-gray-300 hover:text-white px-3 py-2 rounded transition border border-gray-700"
+        >
+          Logout
+        </button>
       </div>
     </nav>
   );

@@ -33,9 +33,6 @@ export const authService = {
       if (error.response?.status === 401) {
         throw new Error('Invalid email or password');
       }
-      if (error.response?.status === 0) {
-        throw new Error('Cannot connect to server. Please check if the server is running.');
-      }
       throw new Error(error.response?.data?.message || 'Failed to login');
     }
   },
@@ -46,9 +43,6 @@ export const authService = {
     } catch (error: any) {
       if (error.response?.status === 409) {
         throw new Error('Email already exists');
-      }
-      if (error.response?.status === 0) {
-        throw new Error('Cannot connect to server. Please check if the server is running.');
       }
       throw new Error(error.response?.data?.message || 'Failed to register');
     }
@@ -82,30 +76,32 @@ export const authService = {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
-        throw new Error('No refresh token found');
+        throw new Error('No refresh token available');
       }
-      
-      const response = await axiosInstance.post<AuthResponse>('/auth/refresh', {
-        refreshToken
-      });
-      
+
+      const response = await axiosInstance.post<AuthResponse>('/auth/refresh', { refreshToken });
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
       }
-      
-      if (response.data.refreshToken) {
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-      }
-      
       return response.data;
     } catch (error: any) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      throw new Error('Session expired');
+    }
+  },
+
+  async deleteAccount(): Promise<void> {
+    try {
+      await axiosInstance.delete('/user/delete-account');
+    } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('Session expired');
+        throw new Error('Session expired. Please login again.');
       }
-      if (error.response?.status === 0) {
-        throw new Error('Cannot connect to server. Please check if the server is running.');
-      }
-      throw error;
+      throw new Error(error.response?.data?.message || 'Failed to delete account');
     }
   }
 }; 

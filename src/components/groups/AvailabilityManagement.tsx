@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Availability } from '../../types/availability';
-import { availabilityService } from '../../services/availabilityService';
-import { useAuth } from '../../context/AuthContext';
+import { Availability, CreateAvailabilityRequest } from '../../types/availability';
+import  availabilityService  from '../../services/availabilityService';
+import { toast } from 'react-toastify';
+
+const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
 interface AvailabilityManagementProps {
-  groupId: number;
+  groupId: string;
   availability: Availability[];
   onAvailabilityChange: (availability: Availability[]) => void;
 }
@@ -12,150 +14,138 @@ interface AvailabilityManagementProps {
 export const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
   groupId,
   availability,
-  onAvailabilityChange
+  onAvailabilityChange,
 }) => {
-  const { user } = useAuth();
-  const [newAvailability, setNewAvailability] = useState({
-    date: '',
+  const [newAvailability, setNewAvailability] = useState<CreateAvailabilityRequest>({
+    groupId,
+    employeeId: '', // Set to current user's id if available
+    dayOfWeek: 1, // Monday
     startTime: '',
-    endTime: ''
+    endTime: '',
+    isAvailable: true,
   });
-  const [error, setError] = useState<string | null>(null);
 
-  const handleAddAvailability = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      setError('User not authenticated');
-      return;
-    }
-
+  const handleAddAvailability = async () => {
     try {
-      const availabilityWithUser = {
-        ...newAvailability,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName
-        }
-      };
-      const addedAvailability = await availabilityService.addAvailability(groupId, availabilityWithUser);
-      onAvailabilityChange([...availability, addedAvailability]);
-      setNewAvailability({ date: '', startTime: '', endTime: '' });
-    } catch (err) {
-      setError('Failed to add availability');
+      const createdAvailability = await availabilityService.createAvailability(groupId, newAvailability);
+      onAvailabilityChange([...availability, createdAvailability]);
+      setNewAvailability({
+        groupId,
+        employeeId: '', // Set to current user's id if available
+        dayOfWeek: 1,
+        startTime: '',
+        endTime: '',
+        isAvailable: true,
+      });
+      toast.success('Availability added successfully');
+    } catch (error) {
+      toast.error('Failed to add availability');
     }
   };
 
-  const handleUpdateAvailability = async (availabilityId: number, updatedAvailability: Omit<Availability, 'id' | 'user'>) => {
-    if (!user) {
-      setError('User not authenticated');
-      return;
-    }
-
-    try {
-      const availabilityWithUser = {
-        ...updatedAvailability,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName
-        }
-      };
-      const avail = await availabilityService.updateAvailability(groupId, availabilityId, availabilityWithUser);
-      onAvailabilityChange(availability.map(a => a.id === availabilityId ? avail : a));
-    } catch (err) {
-      setError('Failed to update availability');
-    }
-  };
-
-  const handleDeleteAvailability = async (availabilityId: number) => {
-    if (!window.confirm('Are you sure you want to delete this availability?')) return;
-
+  const handleDeleteAvailability = async (availabilityId: string) => {
     try {
       await availabilityService.deleteAvailability(groupId, availabilityId);
       onAvailabilityChange(availability.filter(a => a.id !== availabilityId));
-    } catch (err) {
-      setError('Failed to delete availability');
+      toast.success('Availability deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete availability');
     }
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Manage Availability</h2>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+    <div className="space-y-6">
+      <div className="bg-white shadow sm:rounded-lg p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Availability</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="dayOfWeek" className="block text-sm font-medium text-gray-700">
+              Day of Week
+            </label>
+            <select
+              id="dayOfWeek"
+              value={newAvailability.dayOfWeek}
+              onChange={(e) => setNewAvailability({ ...newAvailability, dayOfWeek: parseInt(e.target.value) })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              {DAYS_OF_WEEK.map((day, index) => (
+                <option key={day} value={index}>
+                  {day.charAt(0) + day.slice(1).toLowerCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
+              Start Time
+            </label>
+            <input
+              type="time"
+              id="startTime"
+              value={newAvailability.startTime}
+              onChange={(e) => setNewAvailability({ ...newAvailability, startTime: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
+              End Time
+            </label>
+            <input
+              type="time"
+              id="endTime"
+              value={newAvailability.endTime}
+              onChange={(e) => setNewAvailability({ ...newAvailability, endTime: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isAvailable"
+              checked={newAvailability.isAvailable}
+              onChange={(e) => setNewAvailability({ ...newAvailability, isAvailable: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="isAvailable" className="ml-2 block text-sm text-gray-900">
+              Available
+            </label>
+          </div>
         </div>
-      )}
-
-      <form onSubmit={handleAddAvailability} className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="date"
-            value={newAvailability.date}
-            onChange={(e) => setNewAvailability({ ...newAvailability, date: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
-          <input
-            type="time"
-            value={newAvailability.startTime}
-            onChange={(e) => setNewAvailability({ ...newAvailability, startTime: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
-          <input
-            type="time"
-            value={newAvailability.endTime}
-            onChange={(e) => setNewAvailability({ ...newAvailability, endTime: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
+        <div className="mt-4">
+          <button
+            onClick={handleAddAvailability}
+            className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Add Availability
+          </button>
         </div>
-        <button
-          type="submit"
-          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Add Availability
-        </button>
-      </form>
+      </div>
 
-      <div className="grid gap-4">
-        {availability.map((avail) => (
-          <div key={avail.id} className="border rounded p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="date"
-                value={avail.date}
-                onChange={(e) => handleUpdateAvailability(avail.id, { ...avail, date: e.target.value })}
-                className="px-4 py-2 border rounded"
-              />
-              <input
-                type="time"
-                value={avail.startTime}
-                onChange={(e) => handleUpdateAvailability(avail.id, { ...avail, startTime: e.target.value })}
-                className="px-4 py-2 border rounded"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={avail.endTime}
-                  onChange={(e) => handleUpdateAvailability(avail.id, { ...avail, endTime: e.target.value })}
-                  className="px-4 py-2 border rounded"
-                />
+      <div className="bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Current Availability</h3>
+          <div className="space-y-4">
+            {availability.map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {DAYS_OF_WEEK[item.dayOfWeek].charAt(0) + DAYS_OF_WEEK[item.dayOfWeek].slice(1).toLowerCase()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {item.startTime} - {item.endTime}
+                  </p>
+                </div>
                 <button
-                  onClick={() => handleDeleteAvailability(avail.id)}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                  onClick={() => handleDeleteAvailability(item.id)}
+                  className="text-red-600 hover:text-red-900"
                 >
                   Delete
                 </button>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );

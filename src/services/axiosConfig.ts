@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { authService } from './authService';
+import { config } from '../config';
 
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080',
+  baseURL: config.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,26 +28,11 @@ axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token && config.headers) {
-      const formattedToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      config.headers.Authorization = formattedToken;
-      console.log('Making request with token:', formattedToken.substring(0, 20) + '...');
-      
-      if (axiosInstance.defaults.headers.common) {
-        axiosInstance.defaults.headers.common['Authorization'] = formattedToken;
-      }
-    } else {
-      console.log('Making request without token');
-      if (config.headers) {
-        delete config.headers.Authorization;
-      }
-      if (axiosInstance.defaults.headers.common) {
-        delete axiosInstance.defaults.headers.common['Authorization'];
-      }
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -55,12 +42,12 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('Received 401, checking if we can refresh token');
-      
-      // If we're already trying to refresh, queue the request
+    if (!error.response) {
+      return Promise.reject(new Error('Network error. Please check your connection.'));
+    }
+
+    if (error.response.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        console.log('Already refreshing token, adding to queue');
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -77,27 +64,8 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) {
-          console.log('No refresh token available, clearing auth state');
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          processQueue(new Error('No refresh token available'), null);
-          return Promise.reject(new Error('Session expired'));
-        }
-
-        console.log('Attempting to refresh token');
-        const response = await axios.post<{ accessToken: string }>('http://localhost:8080/auth/refresh-token', {
-          refreshToken
-        });
-
-        const { accessToken } = response.data;
-        console.log('Received new access token');
-        localStorage.setItem('accessToken', accessToken);
+        const { accessToken } = await authService.refreshToken();
         
-        if (axiosInstance.defaults.headers.common) {
-          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        }
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         }
@@ -105,14 +73,27 @@ axiosInstance.interceptors.response.use(
         processQueue(null, accessToken);
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
         processQueue(refreshError, null);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        return Promise.reject(new Error('Session expired'));
+        window.location.href = '/login';
+        return Promise.reject(new Error('Session expired. Please login again.'));
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Handle other errors
+    if (error.response.status === 403) {
+      return Promise.reject(new Error('You do not have permission to perform this action.'));
+    }
+
+    if (error.response.status === 404) {
+      return Promise.reject(new Error('The requested resource was not found.'));
+    }
+
+    if (error.response.status >= 500) {
+      return Promise.reject(new Error('Server error. Please try again later.'));
     }
 
     return Promise.reject(error);

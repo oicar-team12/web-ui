@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Shift } from '../../types/shift';
-import { shiftService } from '../../services/shiftService';
+import { Shift, CreateShiftRequest, ShiftStatus } from '../../types/shift';
+import shiftService from '../../services/shiftService';
+import { toast } from 'react-toastify';
 
 interface ShiftManagementProps {
-  groupId: number;
+  groupId: string;
   shifts: Shift[];
   onShiftsChange: (shifts: Shift[]) => void;
 }
@@ -11,121 +12,150 @@ interface ShiftManagementProps {
 export const ShiftManagement: React.FC<ShiftManagementProps> = ({
   groupId,
   shifts,
-  onShiftsChange
+  onShiftsChange,
 }) => {
-  const [newShift, setNewShift] = useState({
+  const [newShift, setNewShift] = useState<CreateShiftRequest>({
+    groupId,
+    name: '',
     date: '',
     startTime: '',
-    endTime: ''
+    endTime: '',
+    employeeId: '',
+    status: ShiftStatus.SCHEDULED,
   });
-  const [error, setError] = useState<string | null>(null);
 
   const handleAddShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const addedShift = await shiftService.addShift(groupId, newShift);
-      onShiftsChange([...shifts, addedShift]);
-      setNewShift({ date: '', startTime: '', endTime: '' });
+      const createdShift = await shiftService.createShift(groupId, newShift);
+      onShiftsChange([...shifts, createdShift]);
+      setNewShift({
+        groupId,
+        name: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        employeeId: '',
+        status: ShiftStatus.SCHEDULED,
+      });
+      toast.success('Shift created successfully');
     } catch (err) {
-      setError('Failed to add shift');
+      toast.error('Failed to create shift');
+      console.error('Error creating shift:', err);
     }
   };
 
-  const handleUpdateShift = async (shiftId: number, updatedShift: Omit<Shift, 'id'>) => {
+  const handleUpdateShift = async (shiftId: string, updatedData: Partial<Shift>) => {
     try {
-      const shift = await shiftService.updateShift(groupId, shiftId, updatedShift);
-      onShiftsChange(shifts.map(s => s.id === shiftId ? shift : s));
+      const updatedShift = await shiftService.updateShift(groupId, shiftId, updatedData);
+      onShiftsChange(shifts.map((shift) => (shift.id === shiftId ? updatedShift : shift)));
+      toast.success('Shift updated successfully');
     } catch (err) {
-      setError('Failed to update shift');
+      toast.error('Failed to update shift');
+      console.error('Error updating shift:', err);
     }
   };
 
-  const handleDeleteShift = async (shiftId: number) => {
-    if (!window.confirm('Are you sure you want to delete this shift?')) return;
-
+  const handleDeleteShift = async (shiftId: string) => {
     try {
       await shiftService.deleteShift(groupId, shiftId);
-      onShiftsChange(shifts.filter(s => s.id !== shiftId));
+      onShiftsChange(shifts.filter((shift) => shift.id !== shiftId));
+      toast.success('Shift deleted successfully');
     } catch (err) {
-      setError('Failed to delete shift');
+      toast.error('Failed to delete shift');
+      console.error('Error deleting shift:', err);
     }
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Manage Shifts</h2>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      <form onSubmit={handleAddShift} className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="date"
-            value={newShift.date}
-            onChange={(e) => setNewShift({ ...newShift, date: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
-          <input
-            type="time"
-            value={newShift.startTime}
-            onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
-          <input
-            type="time"
-            value={newShift.endTime}
-            onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })}
-            className="px-4 py-2 border rounded"
-            required
-          />
+    <div className="space-y-6">
+      <form onSubmit={handleAddShift} className="space-y-4">
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+              Date
+            </label>
+            <input
+              type="date"
+              id="date"
+              value={newShift.date}
+              onChange={(e) => setNewShift({ ...newShift, date: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
+              Start Time
+            </label>
+            <input
+              type="time"
+              id="startTime"
+              value={newShift.startTime}
+              onChange={(e) => setNewShift({ ...newShift, startTime: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
+              End Time
+            </label>
+            <input
+              type="time"
+              id="endTime"
+              value={newShift.endTime}
+              onChange={(e) => setNewShift({ ...newShift, endTime: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700">
+              Employee ID
+            </label>
+            <input
+              type="text"
+              id="employeeId"
+              value={newShift.employeeId}
+              onChange={(e) => setNewShift({ ...newShift, employeeId: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              required
+            />
+          </div>
         </div>
         <button
           type="submit"
-          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           Add Shift
         </button>
       </form>
 
-      <div className="grid gap-4">
-        {shifts.map((shift) => (
-          <div key={shift.id} className="border rounded p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="date"
-                value={shift.date}
-                onChange={(e) => handleUpdateShift(shift.id, { ...shift, date: e.target.value })}
-                className="px-4 py-2 border rounded"
-              />
-              <input
-                type="time"
-                value={shift.startTime}
-                onChange={(e) => handleUpdateShift(shift.id, { ...shift, startTime: e.target.value })}
-                className="px-4 py-2 border rounded"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={shift.endTime}
-                  onChange={(e) => handleUpdateShift(shift.id, { ...shift, endTime: e.target.value })}
-                  className="px-4 py-2 border rounded"
-                />
-                <button
-                  onClick={() => handleDeleteShift(shift.id)}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                >
-                  Delete
-                </button>
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {shifts.map((shift) => (
+            <li key={shift.id} className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Date(shift.date).toLocaleDateString()} {shift.startTime} - {shift.endTime}
+                  </p>
+                  <p className="text-sm text-gray-500">Employee ID: {shift.employeeId}</p>
+                  <p className="text-sm text-gray-500">Status: {shift.status}</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleDeleteShift(shift.id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
