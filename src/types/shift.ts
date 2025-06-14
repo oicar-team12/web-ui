@@ -8,38 +8,35 @@ export enum ShiftStatus {
 }
 
 export interface Shift {
-  id: string;
-  groupId: string;
-  employeeId: string;
-  employee?: User;
-  name: string;
+  id: number;
   date: string;
   startTime: string;
   endTime: string;
+  employee: User;
   status: ShiftStatus;
+  name: string;
+  location: string;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface CreateShiftRequest {
-  groupId: string;
-  employeeId: string;
-  name: string;
+  groupId: number;
+  userId: number;
   date: string;
   startTime: string;
   endTime: string;
-  status: ShiftStatus;
+  location: string;
   notes?: string;
 }
 
 export interface UpdateShiftRequest {
-  employeeId?: string;
+  employeeId?: number;
+  name?: string;
   date?: string;
   startTime?: string;
   endTime?: string;
-  status?: ShiftStatus;
   notes?: string;
+  status?: ShiftStatus;
 }
 
 export interface ShiftCriteria {

@@ -1,6 +1,6 @@
 export const config = {
-  mockMode: true, // Set to false to use real backend
-  apiBaseUrl: 'http://localhost:8080', // Your backend URL
+  mockMode: false, // Set to false to use real backend
+  apiBaseUrl: process.env.REACT_APP_API_URL || 'http://localhost:8080', // Your backend URL
   mockDelay: 500, // Simulate network delay for mock mode (ms)
 };
 

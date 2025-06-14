@@ -3,20 +3,20 @@ import axiosInstance from './axiosConfig';
 
 class GroupMemberService {
   async getGroupMembers(groupId: string): Promise<GroupUser[]> {
-    const response = await axiosInstance.get<GroupUser[]>(`/group/${groupId}/members`);
+    const response = await axiosInstance.get<GroupUser[]>(`/group/${groupId}/users`);
     return response.data;
   }
 
-  async addMember(groupId: string, userId: string): Promise<void> {
-    await axiosInstance.post(`/group/${groupId}/members`, { userId });
+  async addMember(groupId: string, userId: number): Promise<void> {
+    await axiosInstance.post(`/group/${groupId}/user/${userId}`);
   }
 
-  async updateMemberRole(groupId: string, userId: string, role: GroupUserRole): Promise<void> {
-    await axiosInstance.put(`/group/${groupId}/members/${userId}`, { role });
+  async updateMemberRole(groupId: string, userId: number, role: GroupUserRole): Promise<void> {
+    await axiosInstance.put(`/group/${groupId}/user/${userId}/role/${role}`);
   }
 
-  async removeMember(groupId: string, userId: string): Promise<void> {
-    await axiosInstance.delete(`/group/${groupId}/members/${userId}`);
+  async removeMember(groupId: string, userId: number): Promise<void> {
+    await axiosInstance.delete(`/group/${groupId}/user/${userId}`);
   }
 }
 

@@ -15,76 +15,77 @@ const Navbar: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
 
   useEffect(() => {
-    const fetchGroups = async () => {
-      const data = await groupService.getGroups();
-      setGroups(data);
+    if (user) {
+      loadGroups();
+    }
+  }, [user]);
 
-      // If a group is already selected in context (from localStorage), try to find it.
-      // Otherwise, select the first group from the fetched data.
-      if (data.length > 0) {
-        const initialGroup = selectedGroupId 
-          ? data.find(g => g.id === selectedGroupId) 
-          : data[0];
-        
-        if (initialGroup) {
-          setSelectedGroupId(initialGroup.id);
-        } else if (data.length > 0) { // Fallback if selectedGroupId from localStorage doesn't exist anymore
-          setSelectedGroupId(data[0].id);
-        }
+  const loadGroups = async () => {
+    try {
+      const fetchedGroups = await groupService.getGroups();
+      setGroups(fetchedGroups);
+      if (fetchedGroups.length > 0 && !selectedGroupId) {
+        setSelectedGroupId(fetchedGroups[0].id.toString());
       }
-    };
-    fetchGroups();
-  }, [selectedGroupId, setSelectedGroupId]); // Add selectedGroupId to dependency array to re-run if it changes from external source
+    } catch (error) {
+      console.error('Failed to load groups:', error);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
     setSelectedGroupId(null); // Clear selected group on logout
+    setGroups([]); // Clear groups on logout
     navigate('/login');
   };
 
   const handleGroupChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const groupId = event.target.value;
-    setSelectedGroupId(groupId); // Update context (and localStorage via GroupContext)
+    setSelectedGroupId(event.target.value);
   };
 
   return (
-    <nav className="bg-gray-900 px-4 py-2 flex items-center justify-between shadow-md">
+    <nav className="bg-light-primary dark:bg-dark-primary px-4 py-2 flex items-center justify-between shadow-md border-b border-light-border dark:border-dark-border">
       <div className="flex items-center gap-8">
-        <Link to="/" className="text-2xl font-bold text-white tracking-tight">ShiftSync</Link>
-        <Link to="/dashboard" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Dashboard</Link>
-        <Link to="/schedule" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Schedule</Link>
-        <Link to="/groups" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Groups</Link>
-        {groups.length > 0 && (
-          <select
-            value={selectedGroupId || ''}
-            onChange={handleGroupChange}
-            className="ml-4 bg-gray-800 text-gray-200 border border-gray-700 rounded px-2 py-1"
-          >
-            {groups.map(group => (
-              <option key={group.id} value={group.id}>{group.name}</option>
-            ))}
-          </select>
+        <Link to="/" className="text-2xl font-bold text-light-text dark:text-dark-text tracking-tight">ShiftSync</Link>
+        {user && (
+          <>
+            <Link to="/dashboard" className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 py-2 rounded transition">Dashboard</Link>
+            <Link to="/schedule" className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 py-2 rounded transition">Schedule</Link>
+            <Link to="/groups" className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 py-2 rounded transition">Groups</Link>
+            {groups.length > 0 && selectedGroupId && (
+              <select
+                value={selectedGroupId}
+                onChange={handleGroupChange}
+                className="ml-4 bg-light-secondary dark:bg-dark-secondary text-light-text dark:text-dark-text border border-light-border dark:border-dark-border rounded px-2 py-1"
+              >
+                {groups.map(group => (
+                  <option key={group.id} value={group.id.toString()}>{group.name}</option>
+                ))}
+              </select>
+            )}
+          </>
         )}
       </div>
       <div className="flex items-center gap-4">
         <button
           onClick={toggleTheme}
-          className="text-gray-300 hover:text-white px-3 py-2 rounded transition"
+          className="p-2 rounded-full hover:bg-light-hover dark:hover:bg-dark-hover transition-colors"
         >
           {theme === 'dark' ? '🌞' : '🌙'}
         </button>
-        {config.mockMode && (
-          <span className="text-yellow-400 text-sm px-2 py-1 bg-yellow-900/30 rounded">
-            Mock Mode
-          </span>
+        {user && (
+          <div className="flex items-center gap-2">
+            <span className="text-light-text-secondary dark:text-dark-text-secondary">
+              {user.firstName} {user.lastName}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 py-2 rounded transition"
+            >
+              Logout
+            </button>
+          </div>
         )}
-        <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded transition">Profile</Link>
-        <button
-          onClick={handleLogout}
-          className="text-gray-300 hover:text-white px-3 py-2 rounded transition border border-gray-700"
-        >
-          Logout
-        </button>
       </div>
     </nav>
   );

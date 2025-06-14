@@ -2,33 +2,30 @@ import { User } from './user';
 
 export enum GroupUserRole {
   MANAGER = 'MANAGER',
-  MEMBER = 'MEMBER'
+  EMPLOYEE = 'EMPLOYEE'
 }
 
 export interface Group {
-  id: string;
+  id: number;
   name: string;
   description?: string;
-  managerId: string;
-  manager?: User;
-  members: User[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface GroupUser {
-  id: string;
-  user: User;
+export type GroupUser = {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
   role: GroupUserRole;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export interface CreateGroupDto {
   name: string;
   description?: string;
-  managerId?: string;
-  members?: User[];
 }
 
 export interface UpdateGroupDto {

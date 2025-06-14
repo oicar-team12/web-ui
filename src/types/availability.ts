@@ -1,16 +1,30 @@
 import { User } from './user';
 
 export interface Availability {
-  id: string;
-  groupId: string;
-  employeeId: string;
-  employee?: User;
-  dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  id: number;
+  userId: number;
+  user?: User;
+  employeeId: number;
+  dayOfWeek: number;
   startTime: string;
   endTime: string;
+  date: string;
   isAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AvailabilityDto {
+  userId: string;
+  startTime: string;
+  endTime: string;
+  daysOfWeek: number[];
+}
+
+export interface UpdateAvailabilityDto {
+  startTime?: string;
+  endTime?: string;
+  daysOfWeek?: number[];
 }
 
 export interface AvailabilityCriteria {
@@ -20,17 +34,17 @@ export interface AvailabilityCriteria {
 }
 
 export interface CreateAvailabilityRequest {
-  groupId: string;
-  employeeId: string;
-  dayOfWeek: number;
   startTime: string;
   endTime: string;
+  date: string;
+  dayOfWeek: number;
   isAvailable: boolean;
 }
 
 export interface UpdateAvailabilityRequest {
-  dayOfWeek?: number;
   startTime?: string;
   endTime?: string;
+  date?: string;
+  dayOfWeek?: number;
   isAvailable?: boolean;
 } 

@@ -1,21 +1,25 @@
-import { Shift, CreateShiftRequest, UpdateShiftRequest } from '../types/shift';
+import { Shift, CreateShiftRequest, UpdateShiftRequest, ShiftStatus } from '../types/shift';
 import { shouldUseMock, simulateApiDelay } from '../config';
 import axiosInstance from './axiosConfig';
 
 class ShiftService {
   private shifts: Shift[] = [];
 
-  async getShifts(groupId: string): Promise<Shift[]> {
+  async getShifts(groupId: number, startDate?: string, endDate?: string): Promise<Shift[]> {
     if (shouldUseMock()) {
       await simulateApiDelay();
-      return this.shifts.filter(shift => shift.groupId === groupId);
+      return [];
     }
     try {
-      const response = await axiosInstance.get<Shift[]>(`/group/${groupId}/shifts`);
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      
+      const response = await axiosInstance.get<Shift[]>(`/group/${groupId}/shifts`, { params });
       return response.data;
     } catch (error) {
       console.error('Failed to fetch shifts:', error);
-      return this.shifts.filter(shift => shift.groupId === groupId);
+      throw new Error('Failed to fetch shifts');
     }
   }
 
@@ -24,32 +28,40 @@ class ShiftService {
     return response.data;
   }
 
-  async getShift(groupId: string, shiftId: string): Promise<Shift> {
+  async getShift(groupId: number, shiftId: number): Promise<Shift> {
     if (shouldUseMock()) {
       await simulateApiDelay();
-      const shift = this.shifts.find(s => s.id === shiftId && s.groupId === groupId);
-      if (!shift) throw new Error('Shift not found');
-      return shift;
+      throw new Error('Mock shift not found');
     }
     try {
       const response = await axiosInstance.get<Shift>(`/group/${groupId}/shift/${shiftId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to fetch shift:', error);
-      const shift = this.shifts.find(s => s.id === shiftId && s.groupId === groupId);
-      if (!shift) throw new Error('Shift not found');
-      return shift;
+      throw new Error('Failed to fetch shift');
     }
   }
 
-  async createShift(groupId: string, shiftData: CreateShiftRequest): Promise<Shift> {
+  async createShift(groupId: number, shiftData: CreateShiftRequest): Promise<Shift> {
     if (shouldUseMock()) {
       await simulateApiDelay();
       const newShift: Shift = {
-        ...shiftData,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        id: Math.floor(Math.random() * 1000000),
+        date: shiftData.date,
+        startTime: shiftData.startTime,
+        endTime: shiftData.endTime,
+        employee: {
+          id: shiftData.userId,
+          email: 'mock@example.com',
+          firstName: 'Mock',
+          lastName: 'User',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        status: ShiftStatus.SCHEDULED,
+        name: shiftData.location,
+        location: shiftData.location,
+        notes: shiftData.notes
       };
       this.shifts.push(newShift);
       return newShift;
@@ -59,44 +71,34 @@ class ShiftService {
       return response.data;
     } catch (error) {
       console.error('Failed to create shift:', error);
-      throw error;
+      throw new Error('Failed to create shift');
     }
   }
 
-  async updateShift(groupId: string, shiftId: string, shiftData: UpdateShiftRequest): Promise<Shift> {
+  async updateShift(groupId: number, shiftId: number, shiftData: UpdateShiftRequest): Promise<Shift> {
     if (shouldUseMock()) {
       await simulateApiDelay();
-      const index = this.shifts.findIndex(s => s.id === shiftId && s.groupId === groupId);
-      if (index === -1) throw new Error('Shift not found');
-      this.shifts[index] = {
-        ...this.shifts[index],
-        ...shiftData,
-        updatedAt: new Date().toISOString(),
-      };
-      return this.shifts[index];
+      throw new Error('Mock update not supported');
     }
     try {
       const response = await axiosInstance.put<Shift>(`/group/${groupId}/shift/${shiftId}`, shiftData);
       return response.data;
     } catch (error) {
       console.error('Failed to update shift:', error);
-      throw error;
+      throw new Error('Failed to update shift');
     }
   }
 
-  async deleteShift(groupId: string, shiftId: string): Promise<void> {
+  async deleteShift(groupId: number, shiftId: number): Promise<void> {
     if (shouldUseMock()) {
       await simulateApiDelay();
-      const index = this.shifts.findIndex(s => s.id === shiftId && s.groupId === groupId);
-      if (index === -1) throw new Error('Shift not found');
-      this.shifts.splice(index, 1);
-      return;
+      throw new Error('Mock deletion not supported');
     }
     try {
       await axiosInstance.delete(`/group/${groupId}/shift/${shiftId}`);
     } catch (error) {
       console.error('Failed to delete shift:', error);
-      throw error;
+      throw new Error('Failed to delete shift');
     }
   }
 

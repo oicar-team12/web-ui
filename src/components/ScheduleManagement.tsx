@@ -5,10 +5,11 @@ import { useGroup } from '../context/GroupContext';
 import { useAuth } from '../context/AuthContext';
 import shiftService from '../services/shiftService';
 import groupService from '../services/groupService';
+import groupMemberService from '../services/groupMemberService';
 import { Shift, CreateShiftRequest } from '../types/shift';
 import { User } from '../types/user';
+import { GroupUser } from '../types/group';
 import { toast } from 'react-toastify';
-import { ShiftStatus } from '../types/shift';
 
 const ScheduleManagement: React.FC = () => {
   const { selectedGroupId, triggerShiftRefresh } = useGroup();
@@ -16,7 +17,7 @@ const ScheduleManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [groupEmployees, setGroupEmployees] = useState<User[]>([]);
+  const [groupMembers, setGroupMembers] = useState<GroupUser[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,6 @@ const ScheduleManagement: React.FC = () => {
     const fetchScheduleData = async () => {
       if (!selectedGroupId) {
         setShifts([]);
-        setGroupEmployees([]);
         setLoading(false);
         return;
       }
@@ -34,11 +34,14 @@ const ScheduleManagement: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const fetchedShifts = await shiftService.getShifts(selectedGroupId);
+        const startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const endDate = format(addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), 6), 'yyyy-MM-dd');
+        const [fetchedShifts, members] = await Promise.all([
+          shiftService.getShifts(parseInt(selectedGroupId), startDate, endDate),
+          groupMemberService.getGroupMembers(selectedGroupId)
+        ]);
         setShifts(fetchedShifts);
-
-        const members = await groupService.getGroupMembers(selectedGroupId);
-        setGroupEmployees(members.map(m => m.user));
+        setGroupMembers(members);
       } catch (err) {
         console.error('Failed to fetch schedule data:', err);
         setError('Failed to load schedule. Please try again later.');
@@ -47,7 +50,7 @@ const ScheduleManagement: React.FC = () => {
       }
     };
     fetchScheduleData();
-  }, [selectedGroupId, triggerShiftRefresh]);
+  }, [selectedGroupId, triggerShiftRefresh, selectedDate]);
 
   const getWeekDays = () => {
     const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
@@ -64,31 +67,22 @@ const ScheduleManagement: React.FC = () => {
     setShowModal(false);
   };
 
-  const handleSaveShift = async (shiftToSave: Partial<Shift>) => {
+  const handleSaveShift = async (shiftToSave: CreateShiftRequest) => {
     if (!selectedGroupId) return;
 
     try {
-      const shiftData: CreateShiftRequest = {
-        groupId: selectedGroupId,
-        name: shiftToSave.name || '',
-        date: shiftToSave.date || '',
-        startTime: shiftToSave.startTime || '',
-        endTime: shiftToSave.endTime || '',
-        employeeId: shiftToSave.employeeId || '',
-        status: shiftToSave.status || ShiftStatus.SCHEDULED,
-        notes: shiftToSave.notes || '',
-      };
-
       if (editingShift && editingShift.id) {
-        await shiftService.updateShift(selectedGroupId, editingShift.id, shiftData);
+        await shiftService.updateShift(parseInt(selectedGroupId), editingShift.id, shiftToSave);
         toast.success('Shift updated successfully!');
       } else {
-        await shiftService.createShift(selectedGroupId, shiftData);
+        await shiftService.createShift(parseInt(selectedGroupId), shiftToSave);
         toast.success('Shift created successfully!');
       }
 
       if (selectedGroupId) {
-        const fetchedShifts = await shiftService.getShifts(selectedGroupId);
+        const startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const endDate = format(addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), 6), 'yyyy-MM-dd');
+        const fetchedShifts = await shiftService.getShifts(parseInt(selectedGroupId), startDate, endDate);
         setShifts(fetchedShifts);
         triggerShiftRefresh();
       }
@@ -102,11 +96,13 @@ const ScheduleManagement: React.FC = () => {
   const handleRemoveShift = async (shiftToRemove: Shift) => {
     if (!selectedGroupId) return;
     try {
-      await shiftService.deleteShift(selectedGroupId, shiftToRemove.id);
+      await shiftService.deleteShift(parseInt(selectedGroupId), shiftToRemove.id);
       toast.success('Shift deleted successfully!');
 
       if (selectedGroupId) {
-        const fetchedShifts = await shiftService.getShifts(selectedGroupId);
+        const startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        const endDate = format(addDays(startOfWeek(selectedDate, { weekStartsOn: 1 }), 6), 'yyyy-MM-dd');
+        const fetchedShifts = await shiftService.getShifts(parseInt(selectedGroupId), startDate, endDate);
         setShifts(fetchedShifts);
         triggerShiftRefresh();
       }
@@ -128,10 +124,16 @@ const ScheduleManagement: React.FC = () => {
       <div key={shift.id} className="mb-2 text-white text-sm border-b border-gray-600 pb-1">
         <div className="flex justify-between items-center">
           <div>
-            <strong>Shift</strong> ({new Date(`1970-01-01T${shift.startTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(`1970-01-01T${shift.endTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})<br />
-            <span className="text-gray-400 text-xs">
-              {shift.employee?.firstName} {shift.employee?.lastName} ({shift.employee?.position})
+            <strong>
+              {shift.employee ? `${shift.employee.firstName} ${shift.employee.lastName}` : 'Unassigned'}
+            </strong>
+            <br />
+            <span className="text-gray-400">
+              {new Date(`1970-01-01T${shift.startTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
+              {new Date(`1970-01-01T${shift.endTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
+            {shift.location && <div className="text-gray-400">Location: {shift.location}</div>}
+            {shift.notes && <div className="text-gray-400">Notes: {shift.notes}</div>}
           </div>
           <div className="flex space-x-2 text-xs">
             <button onClick={() => openModal(shift)} className="text-blue-400">Edit</button>
@@ -186,7 +188,10 @@ const ScheduleManagement: React.FC = () => {
       {selectedGroupId && (
         <div className="bg-[#1e2433] rounded-lg p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-white text-lg font-semibold">Weekly Schedule</h2>
+            <div>
+              <h2 className="text-white text-lg font-semibold">Weekly Schedule</h2>
+              <p className="text-gray-400 text-sm">Assign employees to shifts for the selected period</p>
+            </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => setViewMode('week')}
@@ -253,12 +258,13 @@ const ScheduleManagement: React.FC = () => {
         </div>
       )}
 
-      {showModal && (
+      {showModal && selectedGroupId && (
         <ShiftModal
           onClose={closeModal}
           onSave={handleSaveShift}
-          employees={groupEmployees}
           initialShift={editingShift}
+          groupId={parseInt(selectedGroupId)}
+          employees={groupMembers}
         />
       )}
     </div>

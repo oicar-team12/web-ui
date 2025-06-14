@@ -1,5 +1,6 @@
-import { Link } from "react-router-dom";
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { Link } from "react-router-dom";
 
 interface LoginProps {
   onLogin: () => void;
@@ -10,24 +11,18 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Mock authentication
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      if (email && password) {
-        // Mock successful login
-        localStorage.setItem('isAuthenticated', 'true');
-        onLogin();
-      } else {
-        setError('Please enter both email and password');
-      }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+      await login({ email, password });
+      onLogin();
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

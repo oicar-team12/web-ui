@@ -1,104 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import { User } from '../../types/user';
-import shiftService from '../../services/shiftService';
-import { CreateShiftRequest } from '../../types/shift';
+import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { ShiftStatus } from '../../types/shift';
+import { CreateShiftRequest } from '../../types/shift';
+import { User } from '../../types/user';
 
 interface CreateShiftModalProps {
   onClose: () => void;
   onShiftCreated: () => void;
   employees: User[];
-  groupId: string;
+  groupId: number;
 }
 
-const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCreated, employees, groupId }) => {
-  const [shiftName, setShiftName] = useState('');
-  const [shiftStart, setShiftStart] = useState('');
-  const [shiftEnd, setShiftEnd] = useState('');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+export const CreateShiftModal: React.FC<CreateShiftModalProps> = ({
+  onClose,
+  onShiftCreated,
+  employees,
+  groupId
+}) => {
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number>(0);
+  const [location, setLocation] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [notes, setNotes] = useState('');
-  // const [employees, setEmployees] = useState<User[]>([]); // Removed internal state
 
-  // No need to fetch employees here, they are passed as a prop
-  // useEffect(() => {
-  //   const fetchEmployees = async () => {
-  //     try {
-  //       const response = await fetch('http://localhost:5000/employees');
-  //       if (response.ok) {
-  //         const data = await response.json();
-  //         setEmployees(data);
-  //       } else {
-  //         console.error('Error fetching employees');
-  //       }
-  //     } catch (error) {
-  //       console.error('Error fetching employees:', error);
-  //     }
-  //   };
-
-  //   fetchEmployees();
-  // }, []);
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedEmployeeId || !groupId) {
-      toast.error('Please select an employee and ensure a group is selected.');
+
+    if (!selectedEmployeeId) {
+      toast.error('Please select an employee');
+      return;
+    }
+
+    if (!location) {
+      toast.error('Please enter a location');
+      return;
+    }
+
+    if (!date) {
+      toast.error('Please select a date');
+      return;
+    }
+
+    if (!startTime || !endTime) {
+      toast.error('Please enter both start and end times');
       return;
     }
 
     const newShift: CreateShiftRequest = {
       groupId,
-      employeeId: selectedEmployeeId,
-      name: shiftName,
-      date: new Date().toISOString().split('T')[0], // Assuming today's date for simplicity
-      startTime: shiftStart,
-      endTime: shiftEnd,
-      notes,
-      status: ShiftStatus.SCHEDULED, // Default status
-      // position: '' // Position is not part of CreateShiftRequest
+      userId: selectedEmployeeId,
+      date,
+      startTime,
+      endTime,
+      location,
+      notes
     };
 
-    try {
-      await shiftService.createShift(groupId, newShift);
-      toast.success('Shift created successfully!');
-      onShiftCreated();
-      onClose();
-    } catch (error) {
-      console.error('Failed to create shift:', error);
-      toast.error('Failed to create shift.');
-    }
+    onShiftCreated();
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
-      <div className="bg-gray-800 text-white p-8 rounded-lg max-w-lg w-full shadow-lg">
-        <h2 className="text-xl font-semibold mb-6 text-gray-200">Create New Shift</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="shiftName" className="block text-sm font-medium text-gray-300">Shift Name</label>
-            <input
-              type="text"
-              id="shiftName"
-              value={shiftName}
-              onChange={(e) => setShiftName(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-lg mt-1 bg-gray-700 text-white placeholder-gray-400"
-              placeholder="Enter shift name"
-              required
-            />
-          </div>
-
-          <div className="mb-4">
-            <label htmlFor="employeeId" className="block text-sm font-medium text-gray-300">Employee</label>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-semibold mb-4">Create New Shift</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Employee</label>
             <select
-              id="employeeId"
               value={selectedEmployeeId}
-              onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-lg mt-1 bg-gray-700 text-white"
-              required
+              onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
             >
-              <option value="" disabled>Select an employee</option>
+              <option value="0">Select an employee</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.firstName} {employee.lastName}
@@ -107,52 +81,69 @@ const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCre
             </select>
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="shiftStart" className="block text-sm font-medium text-gray-300">Shift Start (Hour)</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
             <input
-              type="time"
-              id="shiftStart"
-              value={shiftStart}
-              onChange={(e) => setShiftStart(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-lg mt-1 bg-gray-700 text-white"
-              required
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              placeholder="e.g., Main Office, Branch A"
             />
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="shiftEnd" className="block text-sm font-medium text-gray-300">Shift End (Hour)</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
             <input
-              type="time"
-              id="shiftEnd"
-              value={shiftEnd}
-              onChange={(e) => setShiftEnd(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-lg mt-1 bg-gray-700 text-white"
-              required
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-300">Notes</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Time</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">End Time</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
             <textarea
-              id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-3 border border-gray-600 rounded-lg mt-1 bg-gray-700 text-white placeholder-gray-400"
-              placeholder="Enter any additional notes"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+              rows={3}
             />
           </div>
 
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-500 transition-colors duration-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-500 transition-colors duration-200"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Create Shift
             </button>
@@ -162,5 +153,3 @@ const CreateShiftModal: React.FC<CreateShiftModalProps> = ({ onClose, onShiftCre
     </div>
   );
 };
-
-export default CreateShiftModal;

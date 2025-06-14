@@ -18,7 +18,7 @@ const DashboardSchedules: React.FC = () => {
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const data = await scheduleService.getGroupSchedules(selectedGroupId!);
+      const data = await scheduleService.getSchedules(selectedGroupId!);
       setSchedules(data);
     } catch (error) {
       toast.error('Failed to load schedules');

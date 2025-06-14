@@ -8,20 +8,22 @@ module.exports = {
     extend: {
       colors: {
         dark: {
-          primary: '#0f172a',
-          secondary: '#1e293b',
-          accent: '#334155',
-          text: '#f8fafc',
-          'text-secondary': '#cbd5e1',
-          border: '#475569',
+          primary: '#1a1b1e',
+          secondary: '#2c2e33',
+          accent: '#373a40',
+          text: '#ffffff',
+          'text-secondary': '#a1a1aa',
+          border: '#2c2e33',
+          background: '#1a1b1e',
         },
         light: {
           primary: '#ffffff',
-          secondary: '#f1f5f9',
-          accent: '#e2e8f0',
-          text: '#0f172a',
-          'text-secondary': '#475569',
-          border: '#cbd5e1',
+          secondary: '#f4f4f5',
+          accent: '#e4e4e7',
+          text: '#18181b',
+          'text-secondary': '#71717a',
+          border: '#e4e4e7',
+          background: '#ffffff',
         },
       },
       animation: {

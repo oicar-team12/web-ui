@@ -1,12 +1,11 @@
 export interface User {
-  id: string;
+  id: number;
   email: string;
   firstName: string;
   lastName: string;
-  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
   position?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateUserDto {
@@ -14,7 +13,6 @@ export interface CreateUserDto {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 }
 
 export interface UpdateUserDto {
@@ -24,12 +22,20 @@ export interface UpdateUserDto {
   role?: 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
 }
 
+export interface CreateEmployeeDto extends Omit<CreateUserDto, 'role'> {
+  position?: string;
+}
+
+export interface UpdateEmployeeDto extends Omit<UpdateUserDto, 'role'> {
+  position?: string;
+}
+
 export interface LoginDto {
   email: string;
   password: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
   user: User;
 } 

@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import groupService from '../../services/groupService';
+import groupMemberService from '../../services/groupMemberService';
 import { Group, GroupUser, GroupUserRole } from '../../types/group';
 import { User } from '../../types/user';
 import { toast } from 'react-toastify';
+import { userService } from '../../services/userService';
 
 const GroupManagement: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupUser[]>([]);
-  const [availableEmployees, setAvailableEmployees] = useState<User[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDescription, setNewGroupDescription] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -26,8 +31,8 @@ const GroupManagement: React.FC = () => {
   useEffect(() => {
     const fetchDetails = async () => {
       if (selectedGroup) {
-        setMembers(await groupService.getGroupMembers(selectedGroup.id));
-        setAvailableEmployees(await groupService.getAvailableEmployees(selectedGroup.id));
+        const groupMembers = await groupMemberService.getGroupMembers(selectedGroup.id.toString());
+        setMembers(groupMembers);
       }
     };
     fetchDetails();
@@ -57,18 +62,82 @@ const GroupManagement: React.FC = () => {
     }
   };
 
-  const handleAdd = (user: User) => {
-    // Mock add: just move user from availableEmployees to members
-    setAvailableEmployees(prev => prev.filter(u => u.id !== user.id));
-    setMembers(prev => [...prev, { id: user.id, user, role: GroupUserRole.MEMBER, createdAt: '', updatedAt: '' }]);
+  const handleSearchUsers = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await userService.getAllEmployees();
+      const filteredResults = results.filter(user => 
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      toast.error('Failed to search users.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleRemove = (userId: string) => {
-    // Mock remove: just move user from members to availableEmployees
-    const member = members.find(m => m.user.id === userId);
-    if (member) {
-      setMembers(prev => prev.filter(m => m.user.id !== userId));
-      setAvailableEmployees(prev => [...prev, member.user]);
+  const handleAddMember = async (user: User) => {
+    if (!selectedGroup) return;
+    try {
+      await groupService.addGroupUserByEmail(selectedGroup.id, user.email);
+      const updatedMembers = await groupMemberService.getGroupMembers(selectedGroup.id.toString());
+      setMembers(updatedMembers);
+      setSearchQuery('');
+      setSearchResults([]);
+      toast.success('Member added successfully!');
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      toast.error('Failed to add member.');
+    }
+  };
+
+  const handleRemoveMember = async (userId: number) => {
+    if (!selectedGroup) return;
+    try {
+      await groupMemberService.removeMember(selectedGroup.id.toString(), userId);
+      const updatedMembers = await groupMemberService.getGroupMembers(selectedGroup.id.toString());
+      setMembers(updatedMembers);
+      toast.success('Member removed successfully!');
+    } catch (error) {
+      console.error('Failed to remove member:', error);
+      toast.error('Failed to remove member.');
+    }
+  };
+
+  const handleUpdateMemberRole = async (userId: number, role: GroupUserRole) => {
+    if (!selectedGroup) return;
+    try {
+      await groupMemberService.updateMemberRole(selectedGroup.id.toString(), userId, role);
+      const updatedMembers = await groupMemberService.getGroupMembers(selectedGroup.id.toString());
+      setMembers(updatedMembers);
+      toast.success('Member role updated successfully!');
+    } catch (error) {
+      console.error('Failed to update member role:', error);
+      toast.error('Failed to update member role.');
+    }
+  };
+
+  const handleAddMemberByEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGroup || !newMemberEmail.trim()) return;
+
+    try {
+      await groupService.addGroupUserByEmail(selectedGroup.id, newMemberEmail.trim());
+      const updatedMembers = await groupMemberService.getGroupMembers(selectedGroup.id.toString());
+      setMembers(updatedMembers);
+      setNewMemberEmail('');
+      toast.success('Member added successfully!');
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      toast.error('Failed to add member. Please check if the email is correct and the user exists.');
     }
   };
 
@@ -84,12 +153,13 @@ const GroupManagement: React.FC = () => {
               onClick={() => handleGroupSelect(group)}
             >
               <span>{group.name}</span>
-              <span className="text-sm opacity-70">{(group.members?.length || 0)} members</span>
+              <span className="text-sm opacity-70">{members.length} members</span>
             </button>
           ))}
         </div>
-        <h2 className="text-lg font-semibold text-white mt-6 mb-4">Create New Group</h2>
-        <form onSubmit={handleCreateGroup} className="space-y-4">
+        <form onSubmit={handleCreateGroup} className="mt-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Create New Group</h2>
+          <div className="space-y-4">
           <div>
             <label htmlFor="newGroupName" className="block text-sm font-medium text-gray-300">Group Name</label>
             <input
@@ -118,50 +188,109 @@ const GroupManagement: React.FC = () => {
           >
             Create Group
           </button>
+          </div>
         </form>
       </div>
-      <div className="w-full md:w-2/3 bg-gray-900 rounded-lg p-6">
+
+      <div className="w-full md:w-2/3 bg-gray-800 rounded-lg p-6">
         {selectedGroup && (
           <>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-white">{selectedGroup.name}</h2>
-              <button className="text-red-400 hover:text-red-600">Delete Group</button>
             </div>
+
             <div className="mb-6">
-              <h3 className="text-md font-semibold text-gray-200 mb-2">Members</h3>
-              <div className="flex flex-col gap-2">
-                {members.map(member => (
-                  <div key={member.user.id} className="flex justify-between items-center bg-gray-800 rounded px-4 py-2">
+              <h3 className="text-md font-semibold text-gray-200 mb-2">Add Members</h3>
+              
+              {/* Direct Email Input */}
+              <form onSubmit={handleAddMemberByEmail} className="mb-6">
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newMemberEmail}
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    placeholder="Enter member's email"
+                    className="flex-1 p-2 border border-gray-600 rounded bg-gray-700 text-white"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-500"
+                  >
+                    Add by Email
+                  </button>
+                </div>
+              </form>
+
+              {/* Search Users */}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-300 mb-2">Or Search Users</h4>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search users by name or email"
+                    className="flex-1 p-2 border border-gray-600 rounded bg-gray-700 text-white"
+                  />
+                  <button
+                    onClick={handleSearchUsers}
+                    disabled={isSearching}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    {isSearching ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
+
+                {searchResults.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-300 mb-2">Search Results</h4>
+                    <div className="space-y-2">
+                      {searchResults.map(user => (
+                        <div key={user.id} className="flex justify-between items-center bg-gray-700 p-2 rounded">
                     <div>
-                      <div className="text-white font-medium">{member.user.firstName} {member.user.lastName}</div>
-                      <div className="text-gray-400 text-sm">{member.user.email}</div>
-                      <div className="text-gray-500 text-xs">{member.role === 'MANAGER' ? 'Manager' : 'Member'}</div>
+                            <div className="text-white">{user.firstName} {user.lastName}</div>
+                            <div className="text-gray-400 text-sm">{user.email}</div>
                     </div>
                     <button
-                      className="text-red-400 hover:text-red-600"
-                      onClick={() => handleRemove(member.user.id)}
+                            onClick={() => handleAddMember(user)}
+                            className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-500"
                     >
-                      Remove
+                            Add
                     </button>
                   </div>
                 ))}
               </div>
             </div>
-            <div>
-              <h3 className="text-md font-semibold text-gray-200 mb-2">Available Employees</h3>
-              <div className="flex flex-col gap-2">
-                {availableEmployees.map(user => (
-                  <div key={user.id} className="flex justify-between items-center bg-gray-800 rounded px-4 py-2">
+                )}
+              </div>
+
+              {/* Current Members */}
+              <h3 className="text-md font-semibold text-gray-200 mb-2">Current Members</h3>
+              <div className="space-y-2">
+                {members.map(member => (
+                  <div key={member.id} className="flex justify-between items-center bg-gray-700 p-3 rounded">
                     <div>
-                      <div className="text-white font-medium">{user.firstName} {user.lastName}</div>
-                      <div className="text-gray-400 text-sm">{user.email}</div>
+                      <div className="text-white font-medium">{member.firstName} {member.lastName}</div>
+                      <div className="text-gray-400 text-sm">{member.email}</div>
+                      <div className="text-gray-500 text-xs">{member.role}</div>
                     </div>
+                    <div className="flex space-x-2">
+                      <select
+                        value={member.role}
+                        onChange={(e) => handleUpdateMemberRole(member.id, e.target.value as GroupUserRole)}
+                        className="bg-gray-600 text-white px-2 py-1 rounded"
+                      >
+                        <option value={GroupUserRole.MANAGER}>Manager</option>
+                        <option value={GroupUserRole.EMPLOYEE}>Employee</option>
+                      </select>
                     <button
-                      className="text-blue-400 hover:text-blue-600"
-                      onClick={() => handleAdd(user)}
+                        onClick={() => handleRemoveMember(member.id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500"
                     >
-                      Add
+                        Remove
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>

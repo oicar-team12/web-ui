@@ -1,150 +1,147 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Availability, CreateAvailabilityRequest } from '../../types/availability';
-import  availabilityService  from '../../services/availabilityService';
+import { availabilityService } from '../../services/availabilityService';
 import { toast } from 'react-toastify';
-
-const DAYS_OF_WEEK = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+import { format } from 'date-fns';
 
 interface AvailabilityManagementProps {
-  groupId: string;
-  availability: Availability[];
-  onAvailabilityChange: (availability: Availability[]) => void;
+  groupId: number;
 }
 
 export const AvailabilityManagement: React.FC<AvailabilityManagementProps> = ({
-  groupId,
-  availability,
-  onAvailabilityChange,
+  groupId
 }) => {
+  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [newAvailability, setNewAvailability] = useState<CreateAvailabilityRequest>({
-    groupId,
-    employeeId: '', // Set to current user's id if available
-    dayOfWeek: 1, // Monday
     startTime: '',
     endTime: '',
-    isAvailable: true,
+    date: format(new Date(), 'yyyy-MM-dd'),
+    dayOfWeek: new Date().getDay(),
+    isAvailable: true
   });
+
+  useEffect(() => {
+    const fetchAvailabilities = async () => {
+      try {
+        const data = await availabilityService.getAvailabilities(groupId);
+        setAvailabilities(data);
+      } catch (error) {
+        console.error('Error fetching availabilities:', error);
+        toast.error('Failed to fetch availabilities');
+      }
+    };
+
+    fetchAvailabilities();
+  }, [groupId]);
 
   const handleAddAvailability = async () => {
     try {
       const createdAvailability = await availabilityService.createAvailability(groupId, newAvailability);
-      onAvailabilityChange([...availability, createdAvailability]);
+      setAvailabilities([...availabilities, createdAvailability]);
       setNewAvailability({
-        groupId,
-        employeeId: '', // Set to current user's id if available
-        dayOfWeek: 1,
         startTime: '',
         endTime: '',
-        isAvailable: true,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        dayOfWeek: new Date().getDay(),
+        isAvailable: true
       });
       toast.success('Availability added successfully');
     } catch (error) {
+      console.error('Error adding availability:', error);
       toast.error('Failed to add availability');
     }
   };
 
-  const handleDeleteAvailability = async (availabilityId: string) => {
+  const handleDeleteAvailability = async (id: number) => {
     try {
-      await availabilityService.deleteAvailability(groupId, availabilityId);
-      onAvailabilityChange(availability.filter(a => a.id !== availabilityId));
+      await availabilityService.deleteAvailability(groupId, id);
+      setAvailabilities(availabilities.filter(avail => avail.id !== id));
       toast.success('Availability deleted successfully');
     } catch (error) {
+      console.error('Error deleting availability:', error);
       toast.error('Failed to delete availability');
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow sm:rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Add New Availability</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">Add New Availability</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label htmlFor="dayOfWeek" className="block text-sm font-medium text-gray-700">
-              Day of Week
-            </label>
-            <select
-              id="dayOfWeek"
-              value={newAvailability.dayOfWeek}
-              onChange={(e) => setNewAvailability({ ...newAvailability, dayOfWeek: parseInt(e.target.value) })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            >
-              {DAYS_OF_WEEK.map((day, index) => (
-                <option key={day} value={index}>
-                  {day.charAt(0) + day.slice(1).toLowerCase()}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
+            <input
+              type="date"
+              value={newAvailability.date}
+              onChange={(e) => setNewAvailability({ ...newAvailability, date: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+            />
           </div>
           <div>
-            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
-              Start Time
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Time</label>
             <input
               type="time"
-              id="startTime"
               value={newAvailability.startTime}
               onChange={(e) => setNewAvailability({ ...newAvailability, startTime: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
           <div>
-            <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
-              End Time
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">End Time</label>
             <input
               type="time"
-              id="endTime"
               value={newAvailability.endTime}
               onChange={(e) => setNewAvailability({ ...newAvailability, endTime: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
             />
           </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isAvailable"
-              checked={newAvailability.isAvailable}
-              onChange={(e) => setNewAvailability({ ...newAvailability, isAvailable: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <label htmlFor="isAvailable" className="ml-2 block text-sm text-gray-900">
-              Available
-            </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Available</label>
+            <select
+              value={newAvailability.isAvailable ? 'true' : 'false'}
+              onChange={(e) => setNewAvailability({ ...newAvailability, isAvailable: e.target.value === 'true' })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
           </div>
         </div>
-        <div className="mt-4">
-          <button
-            onClick={handleAddAvailability}
-            className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Add Availability
-          </button>
-        </div>
+        <button
+          onClick={handleAddAvailability}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Add Availability
+        </button>
       </div>
 
-      <div className="bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Current Availability</h3>
-          <div className="space-y-4">
-            {availability.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {DAYS_OF_WEEK[item.dayOfWeek].charAt(0) + DAYS_OF_WEEK[item.dayOfWeek].slice(1).toLowerCase()}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {item.startTime} - {item.endTime}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeleteAvailability(item.id)}
-                  className="text-red-600 hover:text-red-900"
-                >
-                  Delete
-                </button>
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">Current Availabilities</h2>
+        <div className="space-y-4">
+          {availabilities.map((availability) => (
+            <div
+              key={availability.id}
+              className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+            >
+              <div>
+                <p className="font-medium">
+                  {format(new Date(availability.date), 'EEEE, MMMM d, yyyy')}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {availability.startTime} - {availability.endTime}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Status: {availability.isAvailable ? 'Available' : 'Unavailable'}
+                </p>
               </div>
-            ))}
-          </div>
+              <button
+                onClick={() => handleDeleteAvailability(availability.id)}
+                className="px-3 py-1 text-sm text-red-600 hover:text-red-800 focus:outline-none"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>

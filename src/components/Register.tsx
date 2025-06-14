@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import authService from '../services/authService';
 
 const Register: React.FC = () => {
   const [firstName, setFirstName] = useState('');
@@ -11,7 +12,7 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,10 +34,12 @@ const Register: React.FC = () => {
     }
 
     try {
-      await register({ firstName, lastName, email, password });
-      navigate('/login');
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+      await authService.register({ firstName, lastName, email, password });
+      // After successful registration, log the user in
+      await login({ email, password });
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +68,7 @@ const Register: React.FC = () => {
                 placeholder="First Name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div>
@@ -75,6 +79,7 @@ const Register: React.FC = () => {
                 placeholder="Last Name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div>
@@ -85,6 +90,7 @@ const Register: React.FC = () => {
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div>
@@ -95,6 +101,7 @@ const Register: React.FC = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div>
@@ -105,6 +112,7 @@ const Register: React.FC = () => {
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
           </div>
