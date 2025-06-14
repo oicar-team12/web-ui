@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import UserAgreement from './UserAgreement';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAgreement, setShowAgreement] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Check if user has already accepted the agreement
+  useEffect(() => {
+    const hasAccepted = localStorage.getItem('hasAcceptedAgreement');
+    if (hasAccepted !== 'true') {
+      setShowAgreement(true);
+    }
+  }, []);
+
+  const handleAgree = () => {
+    localStorage.setItem('hasAcceptedAgreement', 'true');
+    setShowAgreement(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +39,14 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (showAgreement) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <UserAgreement onAccept={handleAgree} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
