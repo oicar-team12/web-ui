@@ -1,5 +1,3 @@
-import { User } from './user';
-
 export enum GroupUserRole {
   MANAGER = 'MANAGER',
   EMPLOYEE = 'EMPLOYEE'
@@ -31,4 +29,4 @@ export interface CreateGroupDto {
 export interface UpdateGroupDto {
   name?: string;
   description?: string;
-} 
+}

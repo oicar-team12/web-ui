@@ -65,7 +65,7 @@ export const mockGroupUsers: GroupUser[] = [
     firstName: 'Jane',
     lastName: 'Smith',
     email: 'jane.smith@example.com',
-    role: GroupUserRole.MEMBER,
+    role: GroupUserRole.EMPLOYEE,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
